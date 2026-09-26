@@ -226,3 +226,11 @@ Defer chat assistance, full mobile field capture, collaborative review, looped t
 Resolve during engineering implementation: authoritative Assam/JJM references; approved HDPE catalog; demand horizon/peaking and supply hours; source operating envelope; required scenarios/timesteps; service-connection pressure scope; and maximum-pressure/velocity/headloss criteria. Dummy mode uses explicit synthetic assumptions so development can proceed without presenting assumptions as approved standards.
 
 MapLibre supports local GeoJSON layers, suitable for household/network visualization; use a bundled style/context for offline operation. See [MapLibre examples](https://maplibre.org/maplibre-gl-js/docs/examples/). The chosen layout, worker architecture, and milestone order are design recommendations, not requirements imposed by these references.
+
+## 12. Jorhat reference-informed geometry
+
+The synthetic network generator now reads the preserved local Jorhat distribution shapefiles and consolidated EPANET model when available. The adapter extracts only aggregate engineering characteristics: connected branching topology, node-degree distribution, pipe-length distribution, turning-angle distribution, commercial diameter frequency, material labels, and model counts. It does not copy Jorhat coordinates, household records, or raw design files into a generated scheme, package, or public repository.
+
+The observed reference is materially different from the former demonstration chain: six distribution zones, approximately 2,221 GIS junctions and 2,247 GIS pipes, median GIS segment length around 48 m, EPANET median segment length around 54 m, p90 length around 184 m, and predominantly degree-three branching junctions with terminal leaves. The first demo generator uses these distributions to create a smaller deterministic rooted branching network with varied segment lengths and explicit leaf endpoints. If the archive is unavailable, the same measured aggregate snapshot is used as an offline fallback and is labeled reference-derived rather than surveyed.
+
+This is reference-informed procedural calibration, not a claim that the output is a trained construction model or a copy of Jorhat. Future learning work can add a versioned feature dataset and validation split after licensing, coordinate privacy, and engineering-label decisions are resolved.

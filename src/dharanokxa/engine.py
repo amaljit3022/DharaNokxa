@@ -10,6 +10,7 @@ from .exports import create_artifacts
 from .hydraulics import simulate, status_for
 from .models import DesignRequest, DesignResult
 from .optimizer import optimize
+from .reference import load_jorhat_reference
 
 
 def design(request: DesignRequest) -> DesignResult:
@@ -59,6 +60,9 @@ def design(request: DesignRequest) -> DesignResult:
         "optimization_iterations": len(iterations) - 1,
         "dda_status": pressure_status, "pdd_demand_delivery_pass": final_pdd.all_demands_delivered,
         "simulator": final_dda.simulator,
+        "geometry_reference": "JORHAT_DERIVED_TOPOLOGY_AND_LENGTHS",
+        "reference_source_node_count": load_jorhat_reference().source_node_count,
+        "reference_source_pipe_count": load_jorhat_reference().source_pipe_count,
     }
     result = DesignResult(run_id, request.scheme_name, status, output_dir, summary, households, nodes, pipes, iterations)
     result.artifacts = create_artifacts(result, request, final_sim, catalog)

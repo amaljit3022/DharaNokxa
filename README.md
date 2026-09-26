@@ -38,6 +38,7 @@ Open `http://localhost:3000`. See [RUN_COMMANDS.md](RUN_COMMANDS.md) for build a
 - Hydraulic diameters use HDPE internal diameter.
 - Hydraulic compliance and engineer approval are separate states.
 - Synthetic and assumed data remain visibly labeled in the interface and exports.
+- The demo network shape is calibrated from the preserved Jorhat aggregate reference profile; source coordinates and raw project files are not copied.
 
 ## Project layout
 
@@ -45,7 +46,7 @@ Open `http://localhost:3000`. See [RUN_COMMANDS.md](RUN_COMMANDS.md) for build a
 src/dharanokxa/    engineering core and exports
 api/               FastAPI job interface
 web/               Next.js and MapLibre engineering workspace
-standards/         labeled demonstration profiles/catalog
+standards/         labeled demonstration profiles/catalog and Jorhat-derived aggregate profile
 tests/             threshold, catalog, topology, hydraulic, export and HTTP tests
 docs/              product and implementation design
 legacy/             preserved Jorhat reference scripts and local archive

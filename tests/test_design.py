@@ -7,6 +7,7 @@ from dharanokxa.demo import generate_demo
 from dharanokxa.engine import design
 from dharanokxa.hydraulics import status_for
 from dharanokxa.models import DesignProfile, DesignRequest
+from dharanokxa.reference import load_jorhat_reference
 
 
 @pytest.mark.parametrize(
@@ -34,6 +35,18 @@ def test_demo_is_deterministic_and_conserves_demand():
     assert len(pipes) == len(nodes)
     assert sum(n["population_served"] for n in nodes) == sum(h["population"] for h in households)
     assert sum(n["households_served"] for n in nodes) == 100
+    assert max(sum(1 for p in pipes if p["from_node"] == n["node_id"] or p["to_node"] == n["node_id"]) for n in nodes) >= 3
+    assert sum(n["endpoint"] for n in nodes) >= 5
+
+
+def test_jorhat_reference_profile_is_loaded_from_preserved_archive():
+    profile = load_jorhat_reference()
+    assert profile.source_node_count >= 2000
+    assert profile.source_pipe_count >= 2000
+    assert profile.connected_components == 6
+    assert 0.35 < profile.leaf_fraction < 0.55
+    assert profile.median_pipe_length_m == pytest.approx(48.0, abs=10.0)
+    assert profile.diameter_counts_mm.get("92", 0) > 1000
 
 
 def test_complete_demo_fails_then_optimizes_and_exports(tmp_path: Path):
