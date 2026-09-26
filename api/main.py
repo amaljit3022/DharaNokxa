@@ -3,6 +3,7 @@ from __future__ import annotations
 import json
 import sys
 from concurrent.futures import ThreadPoolExecutor
+from contextlib import asynccontextmanager
 from pathlib import Path
 from threading import Lock
 from uuid import uuid4
@@ -28,7 +29,17 @@ class RunRequest(BaseModel):
     source_longitude: float = Field(default=91.743281, ge=-180, le=180)
 
 
-app = FastAPI(title="DharaNokxa", version="0.1.0")
+from api.projects import router as projects_router, store as project_store
+
+
+@asynccontextmanager
+async def lifespan(app):
+    project_store().recover()
+    yield
+
+
+app = FastAPI(title="DharaNokxa", version="0.2.0", lifespan=lifespan)
+app.include_router(projects_router)
 app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"], allow_methods=["*"], allow_headers=["*"])
 executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="dharanokxa-design")
 run_lock = Lock()

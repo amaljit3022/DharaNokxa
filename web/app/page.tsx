@@ -1,47 +1,156 @@
 "use client";
 
-import * as maplibregl from "maplibre-gl";
-import { FormEvent, useEffect, useRef, useState } from "react";
+import {useEffect, useState} from 'react';
+import AssetEditor from '../components/AssetEditor';
+import GeometryTools from '../components/GeometryTools';
+import InputPanel from '../components/InputPanel';
+import NetworkView from '../components/NetworkView';
+import Operations from '../components/Operations';
+import Results from '../components/Results';
+import {IssueList, ResultTable} from '../components/Tables';
+import {API, Asset, Document, Issue, Project, json, request} from '../components/project-types';
 
-const API = process.env.NEXT_PUBLIC_API_URL ?? "http://127.0.0.1:8000";
-type Result = {status:string; scheme_name:string; summary:Record<string, string|number|boolean>; households:any[]; nodes:any[]; pipes:any[]; iterations:any[]; artifacts:Record<string,string>};
-
+const tabs = ['Inputs', 'Network', 'Operations', 'Checks', 'Results', 'Optimization', 'Exports'];
 export default function Home() {
-  const [result, setResult] = useState<Result|null>(null);
-  const [state, setState] = useState("Ready");
-  const [scheme, setScheme] = useState("Demo JJM 2.0 Rural Scheme");
-  const [lat, setLat] = useState("26.182145"); const [lon, setLon] = useState("91.743281");
-  const [tab, setTab] = useState("Overview");
+  const [projects, setProjects] = useState<Asset[]>([]);
+  const [project, setProject] = useState<Project|null>(null);
+  const [doc, setDoc] = useState<Document|null>(null);
+  const [name, setName] = useState('');
+  const [tab, setTab] = useState('Inputs');
+  const [dirty, setDirty] = useState(false);
+  const [busy, setBusy] = useState(false);
+  const [message, setMessage] = useState('');
+  const [error, setError] = useState('');
+  const [selected, setSelected] = useState<Asset|null>(null);
+  const [editType, setEditType] = useState('');
+  const [issues, setIssues] = useState<Issue[]>([]);
+  const [runs, setRuns] = useState<Asset[]>([]);
+  const [run, setRun] = useState<Asset|null>(null);
+  const [undo, setUndo] = useState<Document[]>([]);
 
-  useEffect(() => { fetch(`${API}/demo`).then(r => r.ok ? r.json() : null).then(setResult).catch(() => null); }, []);
-  async function run(event: FormEvent) {
-    event.preventDefault(); setState("Queued");
-    const response = await fetch(`${API}/runs`, {method:"POST", headers:{"content-type":"application/json"}, body:JSON.stringify({scheme_name:scheme,source_latitude:Number(lat),source_longitude:Number(lon)})});
-    const job = await response.json();
-    const timer = setInterval(async () => { const next = await fetch(`${API}/runs/${job.job_id}`).then(r=>r.json()); setState(next.stage); if(next.state === "COMPLETE" || next.state === "FAILED") { clearInterval(timer); if(next.result) setResult(next.result); } }, 1500);
+  useEffect(() => { request('/projects').then(setProjects).catch(e => setError(e.message)); }, []);
+  useEffect(() => {
+    if (!project || !run || !['QUEUED', 'RUNNING'].includes(run.state)) return;
+    let active = true;
+    const timer = setInterval(() => request(`/projects/${project.id}/runs/${run.id}`).then(r => {
+      if (!active) return;
+      setRun(r);
+      if (r.state === 'COMPLETE') {
+        setRuns(old => [r, ...old.filter(x => x.id !== r.id)]);
+        setMessage(`Analysis complete for revision ${r.revision}.`);
+      }
+      if (r.state === 'FAILED') setError(r.error);
+    }).catch(e => { if (active) setError(e.message); }), 1200);
+    return () => { active = false; clearInterval(timer); };
+  }, [project?.id, run?.id, run?.state]);
+  useEffect(() => {
+    if (!project || !doc || !dirty) return;
+    try { localStorage.setItem(`dn-draft-${project.id}`, JSON.stringify({revision: project.revision, document: doc})); }
+    catch { setMessage('Local draft storage is full. Save a revision to retain changes.'); }
+  }, [doc, dirty, project]);
+
+  function change(next: Document) {
+    if (doc) setUndo(history => [...history.slice(-19), doc]);
+    setDoc(next); setDirty(true); setIssues([]);
   }
-  return <main>
-    <header><div><span className="mark">DN</span><strong>DharaNokxa</strong><span className="muted">Automated hydraulic design</span></div><span className="badge">{result ? `${result.summary.data_quality} · ${result.summary.review_status}` : "New design"}</span></header>
-    {!result ? <section className="setup"><div><p className="eyebrow">NEW HYDRAULIC DESIGN</p><h1>Field facts in.<br/>Engineering evidence out.</h1><p>Provide a source location and household coordinates. DharaNokxa builds, simulates, corrects and documents a candidate network.</p></div><form onSubmit={run}><label>Scheme name<input value={scheme} onChange={e=>setScheme(e.target.value)} required/></label><div className="grid"><label>ESR latitude<input value={lat} onChange={e=>setLat(e.target.value)}/></label><label>ESR longitude<input value={lon} onChange={e=>setLon(e.target.value)}/></label></div><label>Household data<button type="button" className="drop">Generate deterministic 100-household demo</button></label><button className="primary">Generate hydraulic design</button><small>JJM 2.0 Assam demo profile · Synthetic assumptions are clearly labeled.</small><p aria-live="polite">{state}</p></form></section> : <Workspace result={result} tab={tab} setTab={setTab} state={state}/>}
-  </main>
+  async function task(fn: () => Promise<void>) {
+    setBusy(true); setError('');
+    try { await fn(); } catch (e) { setError(e instanceof Error ? e.message : String(e)); }
+    finally { setBusy(false); }
+  }
+  async function open(id: string) {
+    await task(async () => {
+      const p = await request(`/projects/${id}`);
+      setProject(p); setDoc(p.document); setDirty(false); setSelected(null); setEditType('');
+      setIssues([]); setUndo([]); setTab('Inputs'); setMessage('');
+      const all = await request(`/projects/${id}/runs`); setRuns(all); setRun(all[0] ?? null);
+      const draft = localStorage.getItem(`dn-draft-${id}`);
+      if (draft) {
+        try {
+          const d = JSON.parse(draft);
+          if (d.revision === p.revision) { setDoc(d.document); setDirty(true); setMessage('Recovered your unsaved draft. Review and save a revision.'); }
+        } catch { setMessage('Saved project loaded; local draft could not be recovered.'); }
+      }
+    });
+  }
+  async function create() {
+    if (!name.trim()) { setError('Enter a project name.'); return; }
+    await task(async () => {
+      const p = await request('/projects', json('POST', {name}));
+      setProjects(old => [p, ...old]); setProject(p); setDoc(p.document);
+      setTab('Inputs'); setRun(null); setRuns([]); setDirty(false); setUndo([]);
+      setSelected(null); setEditType(''); setIssues([]);
+      setMessage('Project created. Upload field data or add network assets.');
+    });
+  }
+  async function save() {
+    if (!project || !doc) return null;
+    const p = await request(`/projects/${project.id}`, json('PUT', {revision: project.revision, document: doc}));
+    setProject(p); setDoc(p.document); setDirty(false); localStorage.removeItem(`dn-draft-${p.id}`);
+    setMessage(`Revision ${p.revision} saved.`); return p;
+  }
+  async function validate() {
+    await task(async () => {
+      const p = dirty ? await save() : project; if (!p) return;
+      const r = await request(`/projects/${p.id}/validate`, {method:'POST'});
+      setIssues(r.issues); setTab('Checks');
+      setMessage(r.valid ? 'Model checks passed. Review warnings before analysis.' : 'Resolve the model errors below.');
+    });
+  }
+  async function analyze(optimize = false) {
+    await task(async () => {
+      const p = dirty ? await save() : project; if (!p) return;
+      const r = await request(`/projects/${p.id}/${optimize ? 'optimize' : 'runs'}`, json('POST', {revision: p.revision}));
+      setRun(r); setTab(optimize ? 'Optimization' : 'Results'); setMessage('Analysis queued for the saved revision.');
+    });
+  }
+  function applyAsset(asset: Asset) {
+    if (!doc) return;
+    const key = asset.node_type ? 'nodes' : 'links'; const existing = doc.model[key];
+    if (!selected && existing.some(a => a.name === asset.name)) { setError('This ID already exists in the node/link namespace.'); return; }
+    change({...doc, model: {...doc.model, [key]: selected ? existing.map(a => a.name === selected.name ? asset : a) : [...existing, asset]}});
+    setSelected(asset); setEditType('');
+  }
+  function inspect(asset: Asset) { setSelected(asset); setEditType(asset.node_type ?? asset.link_type); setTab('Network'); }
+  function removeSelected() {
+    if (!selected || !doc) return;
+    if (selected.locked) { setError('This asset is locked.'); return; }
+    if (doc.model.controls.length || doc.model.sources.length) { setError('Review control/source references before removing an asset.'); return; }
+    if (selected.node_type && doc.model.links.some(l => l.start_node_name === selected.name || l.end_node_name === selected.name)) {
+      setError('Remove or reconnect incident links before removing a junction.'); return;
+    }
+    const key = selected.node_type ? 'nodes' : 'links';
+    change({...doc, model: {...doc.model, [key]: doc.model[key].filter(a => a.name !== selected.name)}});
+    setSelected(null); setEditType('');
+  }
+  const running = ['RUNNING', 'QUEUED'].includes(run?.state);
+  const stale = !!run && !!project && (dirty || run.revision !== project.revision);
+  return <main className="studio">
+    <header><div><span className="mark">DN</span><strong>DharaNokxa</strong><span className="muted">Hydraulic engineering workspace</span></div><a href="/demo">Open synthetic demo</a></header>
+    <div className="project-bar">
+      <label>Saved project<select value={project?.id ?? ''} onChange={e => { if (e.target.value) open(e.target.value); }}><option value="">Select a project</option>{projects.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}</select></label>
+      <label>New project name<input value={name} onChange={e => setName(e.target.value)} placeholder="Village water supply"/></label><button onClick={create} disabled={busy}>Create project</button>
+    </div>
+    <div className="feedback" aria-live="polite">{message && <span>{message}</span>}{error && <p className="error" role="alert">{error}</p>}</div>
+    {!project || !doc ? <section className="welcome"><p className="eyebrow">BUILD FROM YOUR FIELD DATA</p><h1>A real network.<br/>A traceable design.</h1><p>Create a project above, then choose your starting point.</p><div className="start-cards"><article><h2>Import EPANET</h2><p>Bring an INP model with nodes, equipment, patterns, controls and pipe geometry.</p></article><article><h2>Upload field data</h2><p>Import CSV, Excel, GeoJSON, GeoPackage or zipped Shapefiles. Review mapping and units.</p></article><article><h2>Enter a network</h2><p>Add junctions, reservoirs, tanks, pipes, pumps and valves with editable forms.</p></article></div></section> : <>
+      <div className="project-heading"><div><p className="eyebrow">{project.name}</p><h1>Revision {project.revision} <small>{dirty ? '· Unsaved draft' : '· Saved'}</small></h1></div><div className="actions">
+        <button disabled={!undo.length} onClick={() => {const previous=undo[undo.length-1]; setUndo(undo.slice(0,-1)); setDoc(previous); setDirty(true);}}>Undo</button>
+        <button disabled={busy || !dirty} onClick={() => task(async () => { await save(); })}>Save revision</button><button disabled={busy} onClick={validate}>Validate</button><button className="primary" disabled={busy || running} onClick={() => analyze()}>Run DDA + PDA</button>
+      </div></div>
+      <nav>{tabs.map(t => <button key={t} className={t === tab ? 'active' : ''} onClick={() => setTab(t)}>{t}</button>)}</nav>
+      {tab === 'Inputs' && <InputPanel project={project} doc={doc} dirty={dirty} onChange={change} task={task} onImported={p => {setProject(p); setDoc(p.document); setDirty(false); setUndo([]); setMessage('Import committed as a new revision.'); setIssues([]);}}/>}
+      {tab === 'Network' && <>
+        <div className="tool-row">{['Junction','Reservoir','Tank','Pipe','Pump','Valve'].map(t => <button key={t} onClick={() => {setSelected(null); setEditType(t);}}>+ {t}</button>)}<span>{doc.model.nodes.length} nodes · {doc.model.links.length} links</span></div>
+        <div className="engineering-grid"><section><NetworkView document={doc} selected={selected?.name} onSelect={inspect}/><div className="table-scroll"><table><thead><tr><th>Asset ID</th><th>Type</th><th>From</th><th>To</th><th>Action</th></tr></thead><tbody>{[...doc.model.nodes,...doc.model.links].map((a,i) => <tr key={i}><td>{a.name}</td><td>{a.node_type ?? a.link_type}</td><td>{a.start_node_name ?? '—'}</td><td>{a.end_node_name ?? '—'}</td><td><button onClick={() => inspect(a)}>Edit</button></td></tr>)}</tbody></table></div></section>
+        <aside>{editType ? <><AssetEditor asset={selected} type={editType} document={doc} onSave={applyAsset} onCancel={() => setEditType('')}/>{selected && <button onClick={removeSelected}>Remove selected asset from draft</button>}</> : <div className="empty-map">Select an asset or add one above.<p>One physical connection uses one node. Geometry vertices shape pipes without adding joints.</p></div>}</aside></div>
+        <GeometryTools project={project} doc={doc} dirty={dirty} onChange={change} task={task}/>
+      </>}
+      {tab === 'Operations' && <Operations doc={doc} onChange={change}/>}
+      {tab === 'Checks' && <section className="panel"><h2>Model and construction checks</h2><p>Model validity, hydraulic criteria and engineer approval are separate decisions.</p><IssueList issues={issues} onSelect={id => {const a=[...doc.model.nodes,...doc.model.links].find(a=>a.name===id); if(a)inspect(a);}}/>{!issues.length && <p>Use Validate to check the saved model.</p>}</section>}
+      {tab === 'Results' && <Results run={run} runs={runs} onRun={setRun} stale={stale}/>}
+      {tab === 'Optimization' && <section className="panel wide"><h2>Compare diameter candidates</h2><p>Uses your internal-diameter catalog and all configured scenarios. Locked pipes remain unchanged. Full network evaluation supports loops and multiple sources.</p><button disabled={busy || running} onClick={() => analyze(true)}>Optimize diameters</button><p>{run?.state}</p>{run?.candidate && run.state === 'COMPLETE' && <><p>{run.optimization_outcome} · Baseline {run.baseline_status} → Candidate {run.status}</p><p>{run.optimization_note}</p><ResultTable rows={run.optimization_history} fields={['iteration','pipe','from_mm','to_mm','status','selected','reason']}/><button disabled={dirty || run.revision !== project.revision || run.status !== 'PASS'} onClick={() => task(async () => {const p=await request(`/projects/${project.id}/runs/${run.id}/accept`,json('POST',{revision:project.revision})); setProject(p); setDoc(p.document); setDirty(false); setMessage('Candidate saved as a new revision. Run analysis for the adopted revision.');})}>Apply feasible candidate as new revision</button></>}</section>}
+      {tab === 'Exports' && <section className="panel"><h2>Download the analyzed revision</h2>{run?.state === 'COMPLETE' ? <><p>{run.candidate ? 'Candidate based on revision' : 'Revision'} {run.revision} · {run.engine} · input hash {run.input_hash.slice(0,16)}{stale ? ' · Older than the current draft' : ''}</p><div className="downloads">{run.artifacts.map((f:string) => <a key={f} href={`${API}/projects/${project.id}/runs/${run.id}/artifacts/${f}`}>{f}</a>)}</div></> : <p>Complete an analysis to download its frozen INP, inputs, result tables and EPANET reports.</p>}</section>}
+    </>}
+    <footer><span>Field inputs stay editable · No automatic synthetic completion</span><span>EPANET 2.2 through WNTR</span></footer>
+  </main>;
 }
-
-function Workspace({result,tab,setTab,state}:{result:Result;tab:string;setTab:(s:string)=>void;state:string}) {
-  const s:any=result.summary;
-  return <><div className="scheme"><div><p className="eyebrow">CANDIDATE DESIGN</p><h1>{result.scheme_name}</h1></div><div className={`status ${result.status.toLowerCase()}`}>{result.status}<small>Hydraulic status</small></div></div>
-  <nav>{["Overview","Network","Optimization","Tables","Design basis","Exports"].map(x=><button className={tab===x?"active":""} onClick={()=>setTab(x)} key={x}>{x}</button>)}</nav>
-  {tab==="Overview"||tab==="Network"?<div className="workspace"><aside><Metric label="Worst endpoint" value={`${Number(s.minimum_endpoint_pressure_m).toFixed(3)} m`} note={`Critical: ${s.critical_endpoint_id}`}/><div className="threshold"><span>Hard requirement <b>&gt; 7.00 m</b></span><span>Target <b>≥ 8.00 m</b></span></div><Metric label="Achieved margin" value={`${Number(s.achieved_pressure_margin_m).toFixed(3)} m`} note={`Configured margin: ${Number(s.configured_pressure_margin_m).toFixed(2)} m`}/><div className="facts"><span><b>{s.households}</b> households</span><span><b>{s.population}</b> people</span><span><b>{Number(s.design_demand_lps).toFixed(3)}</b> L/s</span><span><b>{Number(s.total_pipe_length_m).toFixed(0)}</b> m pipe</span></div><p className="corridor-note"><b>Road corridor alignment</b><br/>Paired left/right roadside pipes. Straight segments between named intersections. Road boring only at approved crossings.</p><p className="notice">Preliminary automated design. Synthetic terrain, roads, population and pipe catalog. Awaiting engineer review.</p></aside><NetworkMap result={result}/></div>:null}
-  {tab==="Optimization"?<Optimization rows={result.iterations}/>:null}
-  {tab==="Tables"?<Tables result={result}/>:null}
-  {tab==="Design basis"?<Basis/>:null}
-  {tab==="Exports"?<Exports result={result}/>:null}
-  <footer><span>{state}</span><span>EPANET 2.2 through WNTR · Run {String(s.simulator)}</span></footer></>
-}
-
-function Metric({label,value,note}:{label:string;value:string;note:string}) {return <div className="metric"><span>{label}</span><strong>{value}</strong><small>{note}</small></div>}
-function NetworkMap({result}:{result:Result}) { const ref=useRef<HTMLDivElement>(null); useEffect(()=>{if(!ref.current)return; maplibregl.setWorkerUrl("/maplibre-worker.js"); const map=new maplibregl.Map({container:ref.current,style:{version:8,sources:{},layers:[{id:"background",type:"background",paint:{"background-color":"#eef0eb"}}]},center:[91.744,26.192],zoom:12.5}); map.on("load",()=>{const features=result.pipes.map(p=>{const a=p.from_node==="ESR"?[91.743281,26.182145]:point(result,p.from_node);const b=point(result,p.to_node);return {type:"Feature",properties:p,geometry:{type:"LineString",coordinates:[a,b]}}});map.addSource("pipes",{type:"geojson",data:{type:"FeatureCollection",features} as any});map.addLayer({id:"pipes",type:"line",source:"pipes",paint:{"line-color":"#087d83","line-width":["interpolate",["linear"],["get","internal_diameter_mm"],20,2,105,8]}});map.addSource("nodes",{type:"geojson",data:{type:"FeatureCollection",features:result.nodes.map(n=>({type:"Feature",properties:n,geometry:{type:"Point",coordinates:[n.longitude,n.latitude]}}))} as any});map.addLayer({id:"nodes",type:"circle",source:"nodes",paint:{"circle-radius":["case",["get","critical"],8,4],"circle-color":["case",["get","critical"],"#c84040","#17324d"],"circle-stroke-color":"#fff","circle-stroke-width":1.5}});const bounds=new maplibregl.LngLatBounds(); result.nodes.forEach(n=>bounds.extend([n.longitude,n.latitude]));map.fitBounds(bounds,{padding:55});}); return()=>map.remove()},[result]); return <section className="map"><div className="mapbar"><b>Network map</b><span>Diameter mode · Critical endpoint highlighted</span></div><div ref={ref} className="mapcanvas"/></section>}
-function point(r:Result,id:string){const n=r.nodes.find(x=>x.node_id===id);return [n.longitude,n.latitude]}
-function Optimization({rows}:{rows:any[]}){return <section className="panel"><h2>Optimization evidence</h2><p>The initial network failed. Each accepted change targeted the highest-loss pipe on the path to the critical endpoint; safe downsizing trials followed compliance.</p><div className="chart">{rows.filter((_,i)=>i%Math.ceil(rows.length/24)===0).map((r,i)=><i key={i} style={{height:`${Math.max(4,Math.min(100,Number(r.minimum_endpoint_pressure_m)+15))}%`}} title={`${r.minimum_endpoint_pressure_m} m`}/>)}</div><table><thead><tr><th>Iteration</th><th>Action</th><th>Critical endpoint</th><th>Minimum pressure</th></tr></thead><tbody>{rows.slice(-16).map(r=><tr key={`${r.iteration}-${r.action}`}><td>{r.iteration}</td><td>{r.action}</td><td>{r.critical_endpoint_id}</td><td>{Number(r.minimum_endpoint_pressure_m).toFixed(3)} m</td></tr>)}</tbody></table></section>}
-function Tables({result}:{result:Result}){return <section className="panel"><h2>Hydraulic nodes</h2><table><thead><tr><th>ID</th><th>Elevation</th><th>Demand</th><th>Pressure</th><th>Status</th></tr></thead><tbody>{result.nodes.map(n=><tr key={n.node_id}><td>{n.node_id}</td><td>{n.elevation_m.toFixed(2)} m</td><td>{n.design_demand_lps.toFixed(3)} L/s</td><td>{n.pressure_m.toFixed(3)} m</td><td>{n.compliance}</td></tr>)}</tbody></table></section>}
-function Basis(){return <section className="panel"><h2>Design basis</h2><p>55 LPCD × 1.15 demand uplift = 63.25 LPCD/person. Synthetic peak factor 3.0. Endpoint pressure must be strictly greater than 7.00 m; optimization targets at least 8.00 m. HDPE hydraulic calculations use internal diameter.</p><div className="notice">These values come from the project brief and remain pending verification against authoritative departmental standards.</div></section>}
-function Exports({result}:{result:Result}){return <section className="panel"><h2>Design package</h2><p>All files were generated from the same frozen result.</p><div className="downloads">{Object.entries(result.artifacts).map(([name,path])=><a key={name} href={`file:///${String(path).replaceAll("\\","/")}`}>{name.replaceAll("_"," ")}<small>{String(path).split(/[\\/]/).pop()}</small></a>)}</div></section>}

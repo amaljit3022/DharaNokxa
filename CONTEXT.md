@@ -31,3 +31,17 @@ DharaNokxa creates and documents candidate water distribution designs from house
 **Design basis**: The collection of criteria, assumptions, references, and overrides used to generate and evaluate a design.
 
 **Design run**: One reproducible attempt to generate and evaluate a candidate from a fixed set of inputs and assumptions.
+
+**Hydraulic node**: A junction, reservoir, or tank at which hydraulic connectivity and head are represented.
+
+**Geometry vertex**: An intermediate point describing a pipe's route. It has no independent demand or hydraulic connectivity.
+
+**Reservoir boundary**: An external source or sink with prescribed hydraulic head, independent of the network's withdrawals.
+
+**Storage tank**: A finite water-storage asset whose level and volume change with inflow and outflow. An ESR is a storage tank when its operating levels are represented.
+
+**Roadside run**: A longitudinal pipeline along one physical side of a road corridor. Several consecutive pipe segments can belong to the same run.
+
+**Physical connection**: A location where water can pass between connected assets. Coincident map coordinates or intersecting line drawings alone do not establish a connection.
+
+**Approved road crossing**: A documented route permitting a pipe to cross a road, with an identified construction method and approval status.
