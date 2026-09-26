@@ -1,0 +1,4 @@
+road_id,segment_id,intersection_from_id,intersection_to_id,from_x_m,from_y_m,to_x_m,to_y_m,road_class,source,confidence
+MAIN,R001,I000,I001,0,0,0,120,primary,FIELD_TENTATIVE,ASSUMED
+MAIN,R002,I001,I002,0,120,0,240,primary,FIELD_TENTATIVE,ASSUMED
+BRANCH_A,R101,I001,I101,0,120,140,120,village,FIELD_TENTATIVE,ASSUMED

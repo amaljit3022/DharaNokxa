@@ -1,0 +1,17 @@
+{
+  "status": "REFERENCE_DERIVED_AGGREGATE_NOT_A_ROAD_DESIGN_INPUT",
+  "source": "Preserved local Jorhat ROAD.shp layer",
+  "source_coordinates_copied": false,
+  "road_features_observed": 846,
+  "median_centerline_feature_length_m": 114.4518,
+  "p90_centerline_feature_length_m": 495.8233,
+  "maximum_centerline_feature_length_m": 11797.7082,
+  "total_centerline_length_m": 277104.9871,
+  "layer_counts": {
+    "highway_-_primary": 807,
+    "COMMAND ARE": 19,
+    "railway_-_rail": 13,
+    "waterway_-_river": 7
+  },
+  "use": "Reference for road-corridor segment sizing and layer classification. Generated routes remain synthetic until an approved road GIS layer is supplied."
+}

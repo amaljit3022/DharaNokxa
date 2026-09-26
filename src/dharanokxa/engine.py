@@ -11,6 +11,7 @@ from .hydraulics import simulate, status_for
 from .models import DesignRequest, DesignResult
 from .optimizer import optimize
 from .reference import load_jorhat_reference
+from .roads import load_jorhat_roads
 
 
 def design(request: DesignRequest) -> DesignResult:
@@ -63,6 +64,8 @@ def design(request: DesignRequest) -> DesignResult:
         "geometry_reference": "JORHAT_DERIVED_TOPOLOGY_AND_LENGTHS",
         "reference_source_node_count": load_jorhat_reference().source_node_count,
         "reference_source_pipe_count": load_jorhat_reference().source_pipe_count,
+        "road_reference_feature_count": load_jorhat_roads().road_feature_count,
+        "road_alignment_rule": "STRAIGHT_SEGMENTS_BETWEEN_NAMED_INTERSECTIONS_WITH_APPROVED_ROAD_BORE_CROSSINGS",
     }
     result = DesignResult(run_id, request.scheme_name, status, output_dir, summary, households, nodes, pipes, iterations)
     result.artifacts = create_artifacts(result, request, final_sim, catalog)

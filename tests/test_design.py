@@ -8,6 +8,7 @@ from dharanokxa.engine import design
 from dharanokxa.hydraulics import status_for
 from dharanokxa.models import DesignProfile, DesignRequest
 from dharanokxa.reference import load_jorhat_reference
+from dharanokxa.roads import load_jorhat_roads
 
 
 @pytest.mark.parametrize(
@@ -32,11 +33,14 @@ def test_demo_is_deterministic_and_conserves_demand():
     assert first == second
     households, nodes, pipes = first
     assert len(households) == 100
-    assert len(pipes) == len(nodes)
+    assert len(pipes) >= len(nodes)
     assert sum(n["population_served"] for n in nodes) == sum(h["population"] for h in households)
     assert sum(n["households_served"] for n in nodes) == 100
     assert max(sum(1 for p in pipes if p["from_node"] == n["node_id"] or p["to_node"] == n["node_id"]) for n in nodes) >= 3
     assert sum(n["endpoint"] for n in nodes) >= 5
+    assert {p["alignment_type"] for p in pipes} == {"LEFT", "RIGHT", "ROAD_BORE"}
+    assert all(p["approved_crossing"] for p in pipes if p["alignment_type"] == "ROAD_BORE")
+    assert all(p["road_segment_id"] for p in pipes if p["alignment_type"] != "ROAD_BORE")
 
 
 def test_jorhat_reference_profile_is_loaded_from_preserved_archive():
@@ -47,6 +51,26 @@ def test_jorhat_reference_profile_is_loaded_from_preserved_archive():
     assert 0.35 < profile.leaf_fraction < 0.55
     assert profile.median_pipe_length_m == pytest.approx(48.0, abs=10.0)
     assert profile.diameter_counts_mm.get("92", 0) > 1000
+
+
+def test_jorhat_road_layer_profile_is_loaded():
+    profile = load_jorhat_roads()
+    assert profile.road_feature_count >= 800
+    assert profile.median_segment_length_m == pytest.approx(114.45, abs=2.0)
+    assert profile.layer_counts.get("highway_-_primary", 0) >= 800
+
+
+def test_tentative_road_schema_limits_crossings_to_approved_roads():
+    request = DesignRequest(
+        road_corridors_path=Path("templates/road_corridors.template.csv"),
+        road_crossings_path=Path("templates/road_crossings.template.csv"),
+    )
+    _, nodes, pipes = generate_demo(request)
+    assert len(nodes) == 10
+    bores = [pipe for pipe in pipes if pipe["alignment_type"] == "ROAD_BORE"]
+    assert bores
+    assert all(pipe["approved_crossing"] for pipe in bores)
+    assert all(pipe["road_id"] in {"MAIN", "BRANCH_A"} for pipe in bores)
 
 
 def test_complete_demo_fails_then_optimizes_and_exports(tmp_path: Path):

@@ -34,6 +34,8 @@ class DesignRequest:
     source_latitude: float = 26.182145
     source_longitude: float = 91.743281
     source_head_m: float = 119.0
+    road_corridors_path: Path | None = None
+    road_crossings_path: Path | None = None
     profile: DesignProfile = field(default_factory=DesignProfile)
 
 
