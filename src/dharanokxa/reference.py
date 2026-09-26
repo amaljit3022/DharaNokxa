@@ -102,8 +102,6 @@ def load_jorhat_reference(root: str | None = None) -> NetworkReferenceProfile:
             if row.geometry is None or len(row.geometry.coords) < 2:
                 continue
             start, end = row.geometry.coords[0], row.geometry.coords[-1]
-            if row.get("START_NODE") is not None:
-                pass
             diameter = row.get("D")
             if diameter is not None:
                 key = str(int(round(float(diameter))))

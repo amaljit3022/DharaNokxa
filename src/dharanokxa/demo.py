@@ -3,7 +3,6 @@ from __future__ import annotations
 import math
 import random
 from collections import defaultdict
-from dataclasses import replace
 
 from .catalog import demo_hdpe_catalog
 from .models import DesignRequest
@@ -24,7 +23,6 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
     nodes: list[dict] = []
     local_positions: dict[str, tuple[float, float]] = {}
     parent_by_node: dict[str, str] = {}
-    heading_by_node: dict[str, float] = {}
     children_by_node: dict[str, list[str]] = defaultdict(list)
     # Three primary corridors, then two-way side branches. This mirrors the
     # observed predominance of degree-3 nodes and terminal leaves.
@@ -39,7 +37,6 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
         node_id = f"J{index:03d}"
         parent_by_node[node_id] = parent
         local_positions[node_id] = (x, y)
-        heading_by_node[node_id] = heading
         if parent != "ESR":
             children_by_node[parent].append(node_id)
         if index < node_count:
