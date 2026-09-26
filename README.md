@@ -40,6 +40,7 @@ Open `http://localhost:3000`. See [RUN_COMMANDS.md](RUN_COMMANDS.md) for build a
 - Synthetic and assumed data remain visibly labeled in the interface and exports.
 - The demo network shape is calibrated from the preserved Jorhat aggregate reference profile; source coordinates and raw project files are not copied.
 - Pipes run as paired left/right roadside segments between named intersections. Road-bore links are explicit approved crossing records only.
+- Every road is constrained to exactly two longitudinal lines (LEFT and RIGHT). At an approved intersection, each roadside node can receive at most one bore link; the topology validator rejects extra run or crossing connections.
 
 ## Project layout
 

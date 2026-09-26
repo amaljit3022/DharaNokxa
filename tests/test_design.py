@@ -9,6 +9,7 @@ from dharanokxa.hydraulics import status_for
 from dharanokxa.models import DesignProfile, DesignRequest
 from dharanokxa.reference import load_jorhat_reference
 from dharanokxa.roads import load_jorhat_roads
+from dharanokxa.topology import road_topology_violations
 
 
 @pytest.mark.parametrize(
@@ -71,6 +72,25 @@ def test_tentative_road_schema_limits_crossings_to_approved_roads():
     assert bores
     assert all(pipe["approved_crossing"] for pipe in bores)
     assert all(pipe["road_id"] in {"MAIN", "BRANCH_A"} for pipe in bores)
+
+
+def test_road_has_two_lines_and_intersection_connections_are_bounded():
+    _, nodes, pipes = generate_demo(DesignRequest())
+    assert road_topology_violations(nodes, pipes) == []
+    for road_id in {pipe["road_id"] for pipe in pipes if pipe["alignment_type"] in {"LEFT", "RIGHT"}}:
+        assert {
+            pipe["alignment_type"]
+            for pipe in pipes
+            if pipe["road_id"] == road_id and pipe["alignment_type"] in {"LEFT", "RIGHT"}
+        } == {"LEFT", "RIGHT"}
+    assert all(node["road_run_connections"] <= 2 for node in nodes)
+    assert all(node["approved_bore_connections"] <= 1 for node in nodes)
+    assert all(node["hydraulic_degree"] <= 3 for node in nodes)
+    bore_groups = {}
+    for pipe in pipes:
+        if pipe["alignment_type"] == "ROAD_BORE":
+            bore_groups.setdefault(pipe["crossing_id"], []).append(pipe)
+    assert all(len(links) == 2 for crossing_id, links in bore_groups.items() if crossing_id != "X_ESR_ENTRY")
 
 
 def test_complete_demo_fails_then_optimizes_and_exports(tmp_path: Path):

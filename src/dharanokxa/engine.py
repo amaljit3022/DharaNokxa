@@ -12,6 +12,7 @@ from .models import DesignRequest, DesignResult
 from .optimizer import optimize
 from .reference import load_jorhat_reference
 from .roads import load_jorhat_roads
+from .topology import road_topology_violations
 
 
 def design(request: DesignRequest) -> DesignResult:
@@ -48,6 +49,11 @@ def design(request: DesignRequest) -> DesignResult:
             "final_catalog_id": entry.catalog_id, "approval_status": entry.approval_status,
         })
 
+    road_violations = road_topology_violations(nodes, pipes)
+    road_line_counts = {
+        road_id: len({pipe["alignment_type"] for pipe in pipes if pipe.get("road_id") == road_id and pipe["alignment_type"] in {"LEFT", "RIGHT"}})
+        for road_id in {pipe.get("road_id") for pipe in pipes if pipe["alignment_type"] in {"LEFT", "RIGHT"}}
+    }
     summary = {
         "data_quality": "SYNTHETIC", "review_status": "AWAITING_ENGINEER_REVIEW",
         "households": len(households), "population": sum(h["population"] for h in households),
@@ -66,6 +72,11 @@ def design(request: DesignRequest) -> DesignResult:
         "reference_source_pipe_count": load_jorhat_reference().source_pipe_count,
         "road_reference_feature_count": load_jorhat_roads().road_feature_count,
         "road_alignment_rule": "STRAIGHT_SEGMENTS_BETWEEN_NAMED_INTERSECTIONS_WITH_APPROVED_ROAD_BORE_CROSSINGS",
+        "road_topology_status": "PASS" if not road_violations else "FAIL",
+        "road_topology_violations": road_violations,
+        "max_longitudinal_lines_per_road": max(road_line_counts.values(), default=0),
+        "max_road_run_connections_per_node": max((n.get("road_run_connections", 0) for n in nodes), default=0),
+        "max_approved_bore_connections_per_node": max((n.get("approved_bore_connections", 0) for n in nodes), default=0),
     }
     result = DesignResult(run_id, request.scheme_name, status, output_dir, summary, households, nodes, pipes, iterations)
     result.artifacts = create_artifacts(result, request, final_sim, catalog)

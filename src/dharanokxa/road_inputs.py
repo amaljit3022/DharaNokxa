@@ -24,6 +24,38 @@ def load_tentative_corridors(path: str | Path) -> dict[str, list[tuple[float, fl
     return roads
 
 
+def load_tentative_intersections(path: str | Path) -> dict[str, list[str]]:
+    """Load ordered intersection IDs parallel to ``load_tentative_corridors``."""
+    roads: dict[str, list[str]] = {}
+    with Path(path).open(newline="", encoding="utf-8-sig") as handle:
+        for row in csv.DictReader(handle):
+            road_id = row["road_id"].strip()
+            ids = roads.setdefault(road_id, [])
+            start_id = row["intersection_from_id"].strip()
+            end_id = row["intersection_to_id"].strip()
+            if not ids:
+                ids.append(start_id)
+            elif ids[-1] != start_id:
+                raise ValueError(f"Road {road_id} is not ordered at intersection {start_id}")
+            if end_id not in ids:
+                ids.append(end_id)
+    if not roads:
+        raise ValueError("No tentative road intersections found")
+    return roads
+
+
+def load_approved_crossings(path: str | Path) -> dict[str, set[str]]:
+    """Return approved road IDs grouped by their explicit intersection ID."""
+    crossings: dict[str, set[str]] = {}
+    with Path(path).open(newline="", encoding="utf-8-sig") as handle:
+        for row in csv.DictReader(handle):
+            if row.get("approved", "").strip().lower() not in {"true", "yes", "1"}:
+                continue
+            intersection_id = row["intersection_id"].strip()
+            crossings.setdefault(intersection_id, set()).add(row["road_id"].strip())
+    return crossings
+
+
 def load_approved_road_ids(path: str | Path) -> set[str]:
     with Path(path).open(newline="", encoding="utf-8-sig") as handle:
         return {
