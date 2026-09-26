@@ -1,0 +1,56 @@
+project:
+  name: sample_water_scheme
+  scheme_type: distribution
+  description: Example config for a reusable water supply scheme workflow.
+
+paths:
+  raw_data_root: data/raw/sample_scheme
+  processed_data_root: data/processed/sample_scheme
+  model_output_root: models/sample_scheme
+  results_root: results/sample_scheme
+
+inputs:
+  junctions:
+    path: templates/data_template.csv
+    format: csv
+  pipes:
+    path: templates/data_template.csv
+    format: csv
+  reservoirs: []
+  tanks: []
+  pumps: []
+  valves: []
+  context_layers: []
+
+field_mapping:
+  junction_id: LABEL
+  junction_demand: DEMAND
+  junction_elevation: ELEV
+  junction_hgl: HGL
+  pipe_id: LABEL
+  pipe_start_node: START_NODE
+  pipe_end_node: STOP_NODE
+  pipe_length: USER_L
+  pipe_diameter: D
+  pipe_roughness: C
+
+units:
+  demand_input_unit: lps
+  diameter_input_unit: mm
+  length_input_unit: m
+
+simulation:
+  mode: steady_state
+  demand_model: pdd
+  required_pressure_m: 15.0
+  minimum_pressure_m: 0.0
+  pressure_exponent: 0.5
+  headloss_formula: H-W
+
+mapping:
+  low_pressure_threshold_m: 12.0
+  criticality_threshold: 0.05
+
+reporting:
+  create_markdown_report: true
+  create_maps: true

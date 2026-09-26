@@ -1,0 +1,46 @@
+project:
+  name: your_scheme_name
+  scheme_type: distribution
+  description: Describe the scheme here.
+
+paths:
+  raw_data_root: data/raw/your_scheme_name
+  processed_data_root: data/processed/your_scheme_name
+  model_output_root: models/your_scheme_name
+  results_root: results/your_scheme_name
+
+inputs:
+  junctions:
+    path: data/raw/your_scheme_name/junctions.shp
+    format: shp
+  pipes:
+    path: data/raw/your_scheme_name/pipes.shp
+    format: shp
+  reservoirs: []
+  tanks: []
+  pumps: []
+  valves: []
+  context_layers: []
+
+field_mapping: {}
+
+units:
+  demand_input_unit: lps
+  diameter_input_unit: mm
+  length_input_unit: m
+
+simulation:
+  mode: steady_state
+  demand_model: pdd
+  required_pressure_m: 15.0
+  minimum_pressure_m: 0.0
+  pressure_exponent: 0.5
+  headloss_formula: H-W
+
+mapping:
+  low_pressure_threshold_m: 12.0
+  criticality_threshold: 0.05
+
+reporting:
+  create_markdown_report: true
+  create_maps: true

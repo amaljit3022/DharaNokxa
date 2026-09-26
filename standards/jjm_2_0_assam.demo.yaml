@@ -1,0 +1,16 @@
+profile: JJM_2_0_ASSAM_DEMO
+status: DEMONSTRATION_ONLY_PENDING_AUTHORITY_VERIFICATION
+demand:
+  domestic_lpcd: 55.0
+  uplift_fraction: 0.15
+  effective_lpcd: 63.25
+  synthetic_peak_factor: 3.0
+pressure:
+  hard_minimum_m: 7.0
+  hard_minimum_operator: ">"
+  safety_margin_m: 1.0
+  optimization_target_m: 8.0
+hydraulics:
+  engine: EPANET_2_2_THROUGH_WNTR
+  headloss_formula: H-W
+  default_material: HDPE

@@ -1,0 +1,7 @@
+asset_type,asset_id,zone,start_node,end_node,elevation_m,demand_lps,diameter_mm,length_m,roughness,geometry_source,notes
+junction,,,,,0,0,,,,,
+pipe,,,J1,J2,,,100,100,130,,
+tank,T1,,,,95,,,,,,
+reservoir,R1,,,,110,,,,,,
+valve,V1,J1,J2,,,,,,,
+pump,P1,J1,J2,,,,,,,

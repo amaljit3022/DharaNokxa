@@ -1,0 +1,27 @@
+junctions:
+  id: LABEL
+  demand: DEMAND
+  elevation: ELEV
+  headgrade: HGL
+  x_coord: null
+  y_coord: null
+
+pipes:
+  id: LABEL
+  start_node: START_NODE
+  end_node: STOP_NODE
+  length: USER_L
+  diameter: D
+  roughness: C
+  material: MATERIAL
+
+reservoirs:
+  id: null
+  head: null
+
+tanks:
+  id: null
+  elevation: null
+  initial_level: null
+  max_level: null
+  min_level: null

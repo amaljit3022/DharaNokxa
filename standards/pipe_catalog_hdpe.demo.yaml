@@ -1,0 +1,7 @@
+status: DEMONSTRATION_ONLY_NOT_FOR_PROCUREMENT
+material: HDPE
+grade: PE100
+sdr: 11
+outside_diameters_mm: [25, 32, 40, 50, 63, 75, 90, 110, 125]
+hydraulic_diameter: internal_diameter
+roughness_hazen_williams: 140
