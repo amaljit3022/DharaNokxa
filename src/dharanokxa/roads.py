@@ -60,4 +60,3 @@ def load_jorhat_roads(root: str | None = None) -> RoadReferenceProfile:
         )
     except Exception:
         return ROAD_FALLBACK
-
