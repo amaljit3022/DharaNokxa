@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 from concurrent.futures import ThreadPoolExecutor
 from contextlib import asynccontextmanager
@@ -40,7 +41,9 @@ async def lifespan(app):
 
 app = FastAPI(title="DharaNokxa", version="0.2.0", lifespan=lifespan)
 app.include_router(projects_router)
-app.add_middleware(CORSMiddleware, allow_origins=["http://localhost:3000", "http://127.0.0.1:3000"], allow_methods=["*"], allow_headers=["*"])
+allowed_origins = {"http://localhost:3000", "http://127.0.0.1:3000"}
+allowed_origins.update(origin.strip() for origin in os.environ.get('DHARANOKXA_ALLOWED_ORIGINS', '').split(',') if origin.strip())
+app.add_middleware(CORSMiddleware, allow_origins=sorted(allowed_origins), allow_methods=["*"], allow_headers=["*"])
 executor = ThreadPoolExecutor(max_workers=1, thread_name_prefix="dharanokxa-design")
 run_lock = Lock()
 runs: dict[str, dict] = {}

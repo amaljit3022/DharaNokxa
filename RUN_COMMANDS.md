@@ -64,6 +64,30 @@ npm run dev
 
 Open `http://localhost:3000`. The HTTP interface listens at `http://127.0.0.1:8000`.
 
+## Docker workspace
+
+Build and start the persistent local workspace without using the default development ports:
+
+```powershell
+cd C:\Automation\WNTR
+docker compose up --build -d
+```
+
+Open [http://127.0.0.1:3417](http://127.0.0.1:3417). The API is available at
+`http://127.0.0.1:8417`. Project revisions and run artifacts persist in the named
+`dharanokxa-results` Docker volume.
+
+To use different free local ports for another copy, set both values before starting:
+
+```powershell
+$env:DHARANOKXA_WEB_PORT = "3418"
+$env:DHARANOKXA_API_PORT = "8418"
+docker compose up --build -d
+```
+
+Stop the stack with `docker compose down`. Add `--volumes` only when the persisted
+project revisions and artifacts should be removed.
+
 Run verification:
 
 ```powershell

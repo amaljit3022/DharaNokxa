@@ -1,0 +1,18 @@
+.git
+.venv
+venv
+__pycache__
+.pytest_cache
+results
+web
+docs/EPANET Manuals
+legacy
+data
+models
+output
+downloads
+cache
+*.pyc
+*.pyo
+*.rpt
+*.bin
