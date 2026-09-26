@@ -40,7 +40,7 @@ Open `http://localhost:3000`. See [RUN_COMMANDS.md](RUN_COMMANDS.md) for build a
 - Synthetic and assumed data remain visibly labeled in the interface and exports.
 - The first design uses synthetic values and field road-corridor inputs; private training references are not named or exported.
 - Pipes run as paired left/right roadside segments between named intersections. Road-bore links are explicit approved crossing records only.
-- Every road is constrained to exactly two longitudinal lines (LEFT and RIGHT). At an approved intersection, each roadside node can receive at most one bore link; the topology validator rejects extra run or crossing connections.
+- Every road is constrained to exactly two longitudinal lines (LEFT and RIGHT). Approved intersections reuse one node per side; no extra road-to-road joint pipe is generated.
 
 ## Project layout
 

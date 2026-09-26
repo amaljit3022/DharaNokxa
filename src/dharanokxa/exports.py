@@ -91,7 +91,7 @@ def _design_basis(request: DesignRequest) -> dict:
             "alignment_rule": "Straight pipe segments between named road intersections",
             "crossing_rule": "Road boring only at approved crossing records",
             "parallel_side_rule": "Exactly one LEFT and one RIGHT run per road",
-            "node_connection_rule": "At most two same-road run links plus one same-side approved bore per node",
+            "node_connection_rule": "One shared node per approved intersection side; no extra road-to-road joint pipe",
         },
         "parameters": [
             {"parameter": "Domestic demand", "value": profile.domestic_lpcd, "unit": "L/person/day", "source": "Supplied project brief", "confidence": "ASSUMED"},

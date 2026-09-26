@@ -8,9 +8,9 @@ MAX_APPROVED_BORE_LENGTH_M = 50.0
 def road_topology_violations(nodes: list[dict[str, Any]], pipes: list[dict[str, Any]]) -> list[str]:
     """Return construction-topology violations for a two-sided road network.
 
-    A road has at most one longitudinal run on each side. Approved road bores
-    are separate cross-road links and may add one same-side connection at an
-    intersection node without creating a third longitudinal line in that road.
+    A road has at most one longitudinal run on each side. Approved road
+    intersections share one node per side; no extra road-to-road joint pipe is
+    needed. Source-entry bores remain explicit hydraulic links.
     """
     violations: list[str] = []
     node_ids = {str(node["node_id"]) for node in nodes}
@@ -64,6 +64,14 @@ def road_topology_violations(nodes: list[dict[str, Any]], pipes: list[dict[str, 
             violations.append(f"Node {node_id} has more than one road-bore link")
         if len(links) > 3:
             violations.append(f"Node {node_id} has more than two run links plus one approved bore")
+
+    for node in nodes:
+        connected_roads = set(node.get("connected_road_ids", [node.get("road_id", "")]))
+        if len(connected_roads) > 1:
+            if not node.get("approved_crossing"):
+                violations.append(f"Intersection node {node['node_id']} joins roads without approval")
+            if not node.get("crossing_ids"):
+                violations.append(f"Intersection node {node['node_id']} has no crossing ID")
 
     for crossing_id, links in crossing_pipes.items():
         if len(links) != 2:

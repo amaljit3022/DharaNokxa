@@ -70,7 +70,7 @@ def design(request: DesignRequest) -> DesignResult:
         "road_topology_status": "PASS" if not road_violations else "FAIL",
         "road_topology_violations": road_violations,
         "max_longitudinal_lines_per_road": max(road_line_counts.values(), default=0),
-        "max_road_run_connections_per_node": max((n.get("road_run_connections", 0) for n in nodes), default=0),
+        "max_same_road_run_connections_per_node": max((n.get("same_road_run_connections", 0) for n in nodes), default=0),
         "max_approved_bore_connections_per_node": max((n.get("approved_bore_connections", 0) for n in nodes), default=0),
     }
     result = DesignResult(run_id, request.scheme_name, status, output_dir, summary, households, nodes, pipes, iterations)

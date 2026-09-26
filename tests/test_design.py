@@ -48,15 +48,15 @@ def test_tentative_road_schema_limits_crossings_to_approved_roads():
         road_crossings_path=Path("templates/road_crossings.template.csv"),
     )
     _, nodes, pipes = generate_demo(request)
-    assert len(nodes) == 10
+    assert len(nodes) == 8
     bores = [pipe for pipe in pipes if pipe["alignment_type"] == "ROAD_BORE"]
     assert bores
     assert all(pipe["approved_crossing"] for pipe in bores)
-    assert all(pipe["road_id"] in {"MAIN", "BRANCH_A"} for pipe in bores)
-    assert {
-        (pipe["from_road_side"], pipe["to_road_side"])
-        for pipe in bores
-    } == {("LEFT", "LEFT"), ("RIGHT", "RIGHT")}
+    assert all(pipe["crossing_id"] == "X_ESR_ENTRY" for pipe in bores)
+    shared = [node for node in nodes if len(node["connected_road_ids"]) > 1]
+    assert len(shared) == 2
+    assert all(node["approved_crossing"] for node in shared)
+    assert {node["road_side"] for node in shared} == {"LEFT", "RIGHT"}
 
 
 def test_road_has_two_lines_and_intersection_connections_are_bounded():
@@ -68,13 +68,15 @@ def test_road_has_two_lines_and_intersection_connections_are_bounded():
             for pipe in pipes
             if pipe["road_id"] == road_id and pipe["alignment_type"] in {"LEFT", "RIGHT"}
         } == {"LEFT", "RIGHT"}
-    assert all(node["road_run_connections"] <= 2 for node in nodes)
+    assert all(node["same_road_run_connections"] <= 2 for node in nodes)
     assert all(node["approved_bore_connections"] <= 1 for node in nodes)
     assert all(node["hydraulic_degree"] <= 3 for node in nodes)
+    assert all(len(node["connected_road_ids"]) <= 2 for node in nodes)
     bore_groups = {}
     for pipe in pipes:
         if pipe["alignment_type"] == "ROAD_BORE":
             bore_groups.setdefault(pipe["crossing_id"], []).append(pipe)
+    assert set(bore_groups) == {"X_ESR_ENTRY"}
     assert all(len(links) == 2 for crossing_id, links in bore_groups.items() if crossing_id != "X_ESR_ENTRY")
 
 

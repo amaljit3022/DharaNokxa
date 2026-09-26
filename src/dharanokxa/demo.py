@@ -3,6 +3,7 @@ from __future__ import annotations
 import math
 import random
 from collections import defaultdict
+from itertools import combinations
 
 from .catalog import demo_hdpe_catalog
 from .models import DesignRequest
@@ -58,6 +59,41 @@ def _intersection_ids(request: DesignRequest, corridors: dict[str, list[tuple[fl
     }
 
 
+def _crossing_pairs(
+    request: DesignRequest,
+    corridors: dict[str, list[tuple[float, float]]],
+    intersection_ids: dict[str, list[str]],
+) -> list[tuple[str, int, str, int, str]]:
+    """Return approved road pairs that should share one node on each side."""
+    if not (request.road_corridors_path and request.road_corridors_path.exists()):
+        return [
+            ("MAIN", 1, "WEST", 0, "X_MAIN_WEST"),
+            ("MAIN", 2, "EAST", 0, "X_MAIN_EAST"),
+            ("MAIN", 3, "NORTH_WEST", 0, "X_MAIN_NW"),
+            ("MAIN", 4, "NORTH_EAST", 0, "X_MAIN_NE"),
+        ]
+
+    approved = load_approved_crossings(request.road_crossings_path) if request.road_crossings_path and request.road_crossings_path.exists() else {}
+    shared: dict[tuple[float, float], list[tuple[str, int]]] = defaultdict(list)
+    for road_id, points in corridors.items():
+        for point_index, point in enumerate(points):
+            shared[point].append((road_id, point_index))
+    crossing_pairs: list[tuple[str, int, str, int, str]] = []
+    for point, matches in shared.items():
+        for left, right in combinations(matches, 2):
+            left_intersection = intersection_ids[left[0]][left[1]]
+            right_intersection = intersection_ids[right[0]][right[1]]
+            if left_intersection != right_intersection:
+                continue
+            if {left[0], right[0]} - approved.get(left_intersection, set()):
+                continue
+            crossing_pairs.append((
+                left[0], left[1], right[0], right[1],
+                f"X_{left_intersection}",
+            ))
+    return crossing_pairs
+
+
 ROAD_CODES = {"MAIN": "M", "WEST": "W", "EAST": "E", "NORTH_WEST": "NW", "NORTH_EAST": "NE"}
 
 
@@ -71,6 +107,16 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
     rng = random.Random(request.seed)
     corridors = _corridors(request)
     intersection_ids = _intersection_ids(request, corridors)
+    crossing_pairs = _crossing_pairs(request, corridors, intersection_ids)
+    shared_node_keys: dict[tuple[str, int], str] = {}
+    shared_road_ids: dict[str, set[str]] = defaultdict(set)
+    crossing_ids_by_intersection: dict[str, set[str]] = defaultdict(set)
+    for main_id, main_index, branch_id, branch_index, crossing_id in crossing_pairs:
+        intersection_id = intersection_ids[main_id][main_index]
+        crossing_ids_by_intersection[intersection_id].add(crossing_id)
+        shared_node_keys[(main_id, main_index)] = crossing_id
+        shared_node_keys[(branch_id, branch_index)] = crossing_id
+        shared_road_ids[crossing_id].update((main_id, branch_id))
     road_codes = dict(ROAD_CODES)
     for index, road_id in enumerate(corridors):
         road_codes.setdefault(road_id, f"R{index + 1}")
@@ -84,18 +130,32 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
             side_points = _offset_points(centerline, side)
             ids: list[str] = []
             for point_index, (x, y) in enumerate(side_points):
-                node_id = f"{road_codes[road_id]}_{side_name[:1]}_{point_index:02d}"
+                intersection_id = intersection_ids[road_id][point_index]
+                shared_key = shared_node_keys.get((road_id, point_index))
+                merged_roads = shared_road_ids.get(shared_key, set()) if shared_key else set()
+                node_id = (
+                    f"J_{shared_key}_{side_name[:1]}"
+                    if shared_key
+                    else f"{road_codes[road_id]}_{side_name[:1]}_{point_index:02d}"
+                )
                 ids.append(node_id)
-                positions[node_id] = (x, y)
-                latitude = request.source_latitude + y / 111_320.0
-                longitude = request.source_longitude + x / (111_320.0 * math.cos(math.radians(request.source_latitude)))
-                nodes.append({
-                    "node_id": node_id, "latitude": latitude, "longitude": longitude,
-                    "elevation_m": 104.0 + 0.0025 * math.hypot(x, y) + rng.uniform(-0.25, 0.25),
-                    "elevation_source": "SYNTHETIC",
-                    "endpoint": False, "road_id": road_id, "road_side": side_name,
-                    "road_intersection_id": intersection_ids[road_id][point_index],
-                })
+                if node_id not in positions:
+                    positions[node_id] = (x, y)
+                    latitude = request.source_latitude + y / 111_320.0
+                    longitude = request.source_longitude + x / (111_320.0 * math.cos(math.radians(request.source_latitude)))
+                    nodes.append({
+                        "node_id": node_id, "latitude": latitude, "longitude": longitude,
+                        "elevation_m": 104.0 + 0.0025 * math.hypot(x, y) + rng.uniform(-0.25, 0.25),
+                        "elevation_source": "SYNTHETIC",
+                        "endpoint": False, "road_id": road_id, "road_side": side_name,
+                        "road_intersection_id": intersection_id,
+                        "connected_road_ids": [road_id],
+                        "approved_crossing": bool(merged_roads),
+                        "crossing_ids": sorted({shared_key} if shared_key else crossing_ids_by_intersection.get(intersection_id, set())),
+                    })
+                else:
+                    node = next(item for item in nodes if item["node_id"] == node_id)
+                    node["connected_road_ids"] = sorted(set(node["connected_road_ids"]) | {road_id})
             nodes_by_corridor_side[(road_id, side_name)] = ids
 
     pipes: list[dict] = []
@@ -128,37 +188,8 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
             for segment_index, (from_node, to_node) in enumerate(zip(ids, ids[1:])):
                 add_pipe(from_node, to_node, road_id=road_id, segment_id=f"{road_id}_{segment_index:02d}", alignment=side_name)
 
-    # The only cross-road movements are explicitly approved boring points.
-    # Source entry and corridor junctions are named in the tentative schema.
-    crossing_pairs = [
-        ("MAIN", 1, "WEST", 0, "X_MAIN_WEST"),
-        ("MAIN", 2, "EAST", 0, "X_MAIN_EAST"),
-        ("MAIN", 3, "NORTH_WEST", 0, "X_MAIN_NW"),
-        ("MAIN", 4, "NORTH_EAST", 0, "X_MAIN_NE"),
-    ]
-    if request.road_corridors_path and request.road_corridors_path.exists():
-        # For supplied tentative lines, shared endpoints are intersections. A
-        # crossing is permitted only when both participating roads appear in
-        # an approved crossing record.
-        approved_crossings = load_approved_crossings(request.road_crossings_path) if request.road_crossings_path and request.road_crossings_path.exists() else {}
-        shared: dict[tuple[float, float], list[tuple[str, int]]] = defaultdict(list)
-        for road_id, points in corridors.items():
-            for point_index, point in enumerate(points):
-                shared[point].append((road_id, point_index))
-        crossing_pairs = []
-        for point, matches in shared.items():
-            for left, right in zip(matches, matches[1:]):
-                left_intersection = intersection_ids[left[0]][left[1]]
-                right_intersection = intersection_ids[right[0]][right[1]]
-                if left_intersection != right_intersection:
-                    continue
-                approved_roads = approved_crossings.get(left_intersection, set())
-                if {left[0], right[0]} - approved_roads:
-                    continue
-                crossing_pairs.append((left[0], left[1], right[0], right[1], f"X_{left[0]}_{right[0]}_{int(point[0])}_{int(point[1])}"))
-    for main_id, main_index, branch_id, branch_index, crossing_id in crossing_pairs:
-        add_pipe(nodes_by_corridor_side[(main_id, "LEFT")][main_index], nodes_by_corridor_side[(branch_id, "LEFT")][branch_index], road_id=main_id, segment_id=f"{main_id}_{branch_id}", alignment="ROAD_BORE", crossing_id=crossing_id, from_road_id=main_id, to_road_id=branch_id, from_road_side="LEFT", to_road_side="LEFT")
-        add_pipe(nodes_by_corridor_side[(main_id, "RIGHT")][main_index], nodes_by_corridor_side[(branch_id, "RIGHT")][branch_index], road_id=main_id, segment_id=f"{main_id}_{branch_id}", alignment="ROAD_BORE", crossing_id=crossing_id, from_road_id=main_id, to_road_id=branch_id, from_road_side="RIGHT", to_road_side="RIGHT")
+    # Approved road crossings are represented by one shared node per side.
+    # This avoids an unnecessary short diagonal bore pipe and duplicate joint.
     # ESR has a defined access crossing connecting both roadside runs.
     esr_left = nodes_by_corridor_side[(source_road, "LEFT")][0]
     esr_right = nodes_by_corridor_side[(source_road, "RIGHT")][0]
@@ -198,6 +229,11 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
     for node in nodes:
         connected = [pipe for pipe in pipes if pipe["from_node"] == node["node_id"] or pipe["to_node"] == node["node_id"]]
         node["road_run_connections"] = sum(pipe["alignment_type"] in {"LEFT", "RIGHT"} for pipe in connected)
+        run_counts: dict[str, int] = defaultdict(int)
+        for pipe in connected:
+            if pipe["alignment_type"] in {"LEFT", "RIGHT"}:
+                run_counts[pipe["road_id"]] += 1
+        node["same_road_run_connections"] = max(run_counts.values(), default=0)
         node["approved_bore_connections"] = sum(pipe["alignment_type"] == "ROAD_BORE" for pipe in connected)
         node["hydraulic_degree"] = len(connected)
     validate_road_topology(nodes, pipes)
