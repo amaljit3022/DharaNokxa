@@ -42,6 +42,14 @@ py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe main.py demo
 ```
 
+Use field-official tentative road lines and approved crossings when available:
+
+```powershell
+.\.venv\Scripts\python.exe main.py demo `
+  --road-corridors templates\road_corridors.template.csv `
+  --road-crossings templates\road_crossings.template.csv
+```
+
 Start the HTTP interface:
 
 ```powershell
