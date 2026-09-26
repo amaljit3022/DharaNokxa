@@ -89,7 +89,7 @@ def _design_basis(request: DesignRequest) -> dict:
         },
         "road_corridor_reference": {
             "alignment_rule": "Straight pipe segments between named road intersections",
-            "crossing_rule": "Road boring only at approved crossing records",
+            "crossing_rule": "Approved road intersections share one node per side; source-entry boring remains explicit",
             "parallel_side_rule": "Exactly one LEFT and one RIGHT run per road",
             "node_connection_rule": "One shared node per approved intersection side; no extra road-to-road joint pipe",
         },

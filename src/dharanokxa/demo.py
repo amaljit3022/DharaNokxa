@@ -31,6 +31,20 @@ def _offset_points(points: list[tuple[float, float]], side: int) -> list[tuple[f
     return result
 
 
+def _line_intersection(
+    point_a: tuple[float, float],
+    direction_a: tuple[float, float],
+    point_b: tuple[float, float],
+    direction_b: tuple[float, float],
+) -> tuple[float, float]:
+    cross = direction_a[0] * direction_b[1] - direction_a[1] * direction_b[0]
+    if abs(cross) < 1e-9:
+        return ((point_a[0] + point_b[0]) / 2.0, (point_a[1] + point_b[1]) / 2.0)
+    delta = (point_b[0] - point_a[0], point_b[1] - point_a[1])
+    distance = (delta[0] * direction_b[1] - delta[1] * direction_b[0]) / cross
+    return (point_a[0] + distance * direction_a[0], point_a[1] + distance * direction_a[1])
+
+
 def _corridors(request: DesignRequest) -> dict[str, list[tuple[float, float]]]:
     """Straight road centerline segments with named intersections.
 
@@ -108,6 +122,28 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
     corridors = _corridors(request)
     intersection_ids = _intersection_ids(request, corridors)
     crossing_pairs = _crossing_pairs(request, corridors, intersection_ids)
+    side_points_by_road: dict[tuple[str, str], list[tuple[float, float]]] = {
+        (road_id, side_name): _offset_points(centerline, side)
+        for road_id, centerline in corridors.items()
+        for side_name, side in (("LEFT", -1), ("RIGHT", 1))
+    }
+    side_tangents_by_road: dict[tuple[str, str], list[tuple[float, float]]] = {
+        (road_id, side_name): [
+            _unit(centerline[max(0, point_index - 1)], centerline[min(len(centerline) - 1, point_index + 1)])
+            for point_index in range(len(centerline))
+        ]
+        for road_id, centerline in corridors.items()
+        for side_name in ("LEFT", "RIGHT")
+    }
+    shared_positions: dict[tuple[str, str], tuple[float, float]] = {}
+    for main_id, main_index, branch_id, branch_index, crossing_id in crossing_pairs:
+        for side_name in ("LEFT", "RIGHT"):
+            shared_positions[(crossing_id, side_name)] = _line_intersection(
+                side_points_by_road[(main_id, side_name)][main_index],
+                side_tangents_by_road[(main_id, side_name)][main_index],
+                side_points_by_road[(branch_id, side_name)][branch_index],
+                side_tangents_by_road[(branch_id, side_name)][branch_index],
+            )
     shared_node_keys: dict[tuple[str, int], str] = {}
     shared_road_ids: dict[str, set[str]] = defaultdict(set)
     crossing_ids_by_intersection: dict[str, set[str]] = defaultdict(set)
@@ -127,7 +163,7 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
 
     for road_id, centerline in corridors.items():
         for side_name, side in (("LEFT", -1), ("RIGHT", 1)):
-            side_points = _offset_points(centerline, side)
+            side_points = side_points_by_road[(road_id, side_name)]
             ids: list[str] = []
             for point_index, (x, y) in enumerate(side_points):
                 intersection_id = intersection_ids[road_id][point_index]
@@ -139,10 +175,11 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
                     else f"{road_codes[road_id]}_{side_name[:1]}_{point_index:02d}"
                 )
                 ids.append(node_id)
+                node_position = shared_positions.get((shared_key, side_name), (x, y)) if shared_key else (x, y)
                 if node_id not in positions:
-                    positions[node_id] = (x, y)
-                    latitude = request.source_latitude + y / 111_320.0
-                    longitude = request.source_longitude + x / (111_320.0 * math.cos(math.radians(request.source_latitude)))
+                    positions[node_id] = node_position
+                    latitude = request.source_latitude + node_position[1] / 111_320.0
+                    longitude = request.source_longitude + node_position[0] / (111_320.0 * math.cos(math.radians(request.source_latitude)))
                     nodes.append({
                         "node_id": node_id, "latitude": latitude, "longitude": longitude,
                         "elevation_m": 104.0 + 0.0025 * math.hypot(x, y) + rng.uniform(-0.25, 0.25),

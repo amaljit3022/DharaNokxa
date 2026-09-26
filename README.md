@@ -39,7 +39,7 @@ Open `http://localhost:3000`. See [RUN_COMMANDS.md](RUN_COMMANDS.md) for build a
 - Hydraulic compliance and engineer approval are separate states.
 - Synthetic and assumed data remain visibly labeled in the interface and exports.
 - The first design uses synthetic values and field road-corridor inputs; private training references are not named or exported.
-- Pipes run as paired left/right roadside segments between named intersections. Road-bore links are explicit approved crossing records only.
+- Pipes run as paired left/right roadside segments between named intersections. Approved intersections share one node per side; only source-entry boring is an explicit pipe link.
 - Every road is constrained to exactly two longitudinal lines (LEFT and RIGHT). Approved intersections reuse one node per side; no extra road-to-road joint pipe is generated.
 
 ## Project layout

@@ -66,7 +66,7 @@ def design(request: DesignRequest) -> DesignResult:
         "dda_status": pressure_status, "pdd_demand_delivery_pass": final_pdd.all_demands_delivered,
         "simulator": final_dda.simulator,
         "geometry_reference": "ROAD_CORRIDOR_CONSTRAINTS",
-        "road_alignment_rule": "STRAIGHT_SEGMENTS_BETWEEN_NAMED_INTERSECTIONS_WITH_APPROVED_ROAD_BORE_CROSSINGS",
+        "road_alignment_rule": "STRAIGHT_SEGMENTS_BETWEEN_NAMED_INTERSECTIONS_WITH_APPROVED_SHARED_INTERSECTION_NODES",
         "road_topology_status": "PASS" if not road_violations else "FAIL",
         "road_topology_violations": road_violations,
         "max_longitudinal_lines_per_road": max(road_line_counts.values(), default=0),
