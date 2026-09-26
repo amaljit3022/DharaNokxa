@@ -7,8 +7,6 @@ from dharanokxa.demo import generate_demo
 from dharanokxa.engine import design
 from dharanokxa.hydraulics import status_for
 from dharanokxa.models import DesignProfile, DesignRequest
-from dharanokxa.reference import load_jorhat_reference
-from dharanokxa.roads import load_jorhat_roads
 from dharanokxa.topology import road_topology_violations
 
 
@@ -44,23 +42,6 @@ def test_demo_is_deterministic_and_conserves_demand():
     assert all(p["road_segment_id"] for p in pipes if p["alignment_type"] != "ROAD_BORE")
 
 
-def test_jorhat_reference_profile_is_loaded_from_preserved_archive():
-    profile = load_jorhat_reference()
-    assert profile.source_node_count >= 2000
-    assert profile.source_pipe_count >= 2000
-    assert profile.connected_components == 6
-    assert 0.35 < profile.leaf_fraction < 0.55
-    assert profile.median_pipe_length_m == pytest.approx(48.0, abs=10.0)
-    assert profile.diameter_counts_mm.get("92", 0) > 1000
-
-
-def test_jorhat_road_layer_profile_is_loaded():
-    profile = load_jorhat_roads()
-    assert profile.road_feature_count >= 800
-    assert profile.median_segment_length_m == pytest.approx(114.45, abs=2.0)
-    assert profile.layer_counts.get("highway_-_primary", 0) >= 800
-
-
 def test_tentative_road_schema_limits_crossings_to_approved_roads():
     request = DesignRequest(
         road_corridors_path=Path("templates/road_corridors.template.csv"),
@@ -72,6 +53,10 @@ def test_tentative_road_schema_limits_crossings_to_approved_roads():
     assert bores
     assert all(pipe["approved_crossing"] for pipe in bores)
     assert all(pipe["road_id"] in {"MAIN", "BRANCH_A"} for pipe in bores)
+    assert {
+        (pipe["from_road_side"], pipe["to_road_side"])
+        for pipe in bores
+    } == {("LEFT", "LEFT"), ("RIGHT", "RIGHT")}
 
 
 def test_road_has_two_lines_and_intersection_connections_are_bounded():

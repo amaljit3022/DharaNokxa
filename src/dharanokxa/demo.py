@@ -6,8 +6,6 @@ from collections import defaultdict
 
 from .catalog import demo_hdpe_catalog
 from .models import DesignRequest
-from .reference import load_jorhat_reference
-from .roads import load_jorhat_roads
 from .road_inputs import load_approved_crossings, load_tentative_corridors, load_tentative_intersections
 from .topology import validate_road_topology
 
@@ -37,7 +35,7 @@ def _corridors(request: DesignRequest) -> dict[str, list[tuple[float, float]]]:
 
     Every hydraulic run pipe joins consecutive offset points. Turns occur only
     where two road segments meet. The lines are deliberately simple but follow
-    the measured Jorhat road-layer convention of straight polyline features.
+    the field convention of straight polyline features.
     """
     defaults = {
         "MAIN": [(0, 0), (0, 120), (0, 240), (0, 360), (0, 480)],
@@ -66,14 +64,11 @@ ROAD_CODES = {"MAIN": "M", "WEST": "W", "EAST": "E", "NORTH_WEST": "NW", "NORTH_
 def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[dict]]:
     """Create a road-corridor network with paired roadside pipes.
 
-    Jorhat shapefiles and EPANET files provide the local reference statistics;
-    their coordinates are never copied. The demo uses straight pipes between
-    explicit road intersections, paired left/right roadside alignments, and
-    road-bore links only at the approved intersection list.
+    The demo uses straight pipes between explicit road intersections, paired
+    left/right roadside alignments, and road-bore links only at the approved
+    intersection list. Training calibration is not exposed in a design result.
     """
     rng = random.Random(request.seed)
-    reference = load_jorhat_reference()
-    roads = load_jorhat_roads()
     corridors = _corridors(request)
     intersection_ids = _intersection_ids(request, corridors)
     road_codes = dict(ROAD_CODES)
@@ -83,7 +78,6 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
     nodes: list[dict] = []
     nodes_by_corridor_side: dict[tuple[str, str], list[str]] = {}
     positions: dict[str, tuple[float, float]] = {}
-    degree: dict[str, int] = defaultdict(int)
 
     for road_id, centerline in corridors.items():
         for side_name, side in (("LEFT", -1), ("RIGHT", 1)):
@@ -98,10 +92,9 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
                 nodes.append({
                     "node_id": node_id, "latitude": latitude, "longitude": longitude,
                     "elevation_m": 104.0 + 0.0025 * math.hypot(x, y) + rng.uniform(-0.25, 0.25),
-                    "elevation_source": "SYNTHETIC_REFERENCE_INFORMED",
+                    "elevation_source": "SYNTHETIC",
                     "endpoint": False, "road_id": road_id, "road_side": side_name,
                     "road_intersection_id": intersection_ids[road_id][point_index],
-                    "reference_profile": "JORHAT_ROAD_AND_DISTRIBUTION_AGGREGATES",
                 })
             nodes_by_corridor_side[(road_id, side_name)] = ids
 
@@ -164,8 +157,8 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
                     continue
                 crossing_pairs.append((left[0], left[1], right[0], right[1], f"X_{left[0]}_{right[0]}_{int(point[0])}_{int(point[1])}"))
     for main_id, main_index, branch_id, branch_index, crossing_id in crossing_pairs:
-        add_pipe(nodes_by_corridor_side[(main_id, "LEFT")][main_index], nodes_by_corridor_side[(branch_id, "RIGHT")][branch_index], road_id=main_id, segment_id=f"{main_id}_{branch_id}", alignment="ROAD_BORE", crossing_id=crossing_id, from_road_id=main_id, to_road_id=branch_id, from_road_side="LEFT", to_road_side="RIGHT")
-        add_pipe(nodes_by_corridor_side[(main_id, "RIGHT")][main_index], nodes_by_corridor_side[(branch_id, "LEFT")][branch_index], road_id=main_id, segment_id=f"{main_id}_{branch_id}", alignment="ROAD_BORE", crossing_id=crossing_id, from_road_id=main_id, to_road_id=branch_id, from_road_side="RIGHT", to_road_side="LEFT")
+        add_pipe(nodes_by_corridor_side[(main_id, "LEFT")][main_index], nodes_by_corridor_side[(branch_id, "LEFT")][branch_index], road_id=main_id, segment_id=f"{main_id}_{branch_id}", alignment="ROAD_BORE", crossing_id=crossing_id, from_road_id=main_id, to_road_id=branch_id, from_road_side="LEFT", to_road_side="LEFT")
+        add_pipe(nodes_by_corridor_side[(main_id, "RIGHT")][main_index], nodes_by_corridor_side[(branch_id, "RIGHT")][branch_index], road_id=main_id, segment_id=f"{main_id}_{branch_id}", alignment="ROAD_BORE", crossing_id=crossing_id, from_road_id=main_id, to_road_id=branch_id, from_road_side="RIGHT", to_road_side="RIGHT")
     # ESR has a defined access crossing connecting both roadside runs.
     esr_left = nodes_by_corridor_side[(source_road, "LEFT")][0]
     esr_right = nodes_by_corridor_side[(source_road, "RIGHT")][0]
@@ -202,10 +195,7 @@ def generate_demo(request: DesignRequest) -> tuple[list[dict], list[dict], list[
         node["households_served"] = len(served)
         node["base_demand_lps"] = population * effective_lpcd / 86_400.0
         node["design_demand_lps"] = node["base_demand_lps"] * request.profile.peak_factor
-    # Keep these observations available in design basis and export provenance.
     for node in nodes:
-        node["road_reference_feature_count"] = roads.road_feature_count
-        node["distribution_reference_pipe_count"] = reference.source_pipe_count
         connected = [pipe for pipe in pipes if pipe["from_node"] == node["node_id"] or pipe["to_node"] == node["node_id"]]
         node["road_run_connections"] = sum(pipe["alignment_type"] in {"LEFT", "RIGHT"} for pipe in connected)
         node["approved_bore_connections"] = sum(pipe["alignment_type"] == "ROAD_BORE" for pipe in connected)

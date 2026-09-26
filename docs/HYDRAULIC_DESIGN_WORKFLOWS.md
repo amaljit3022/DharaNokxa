@@ -10,9 +10,9 @@ repositories:
   version or access date.
 - [Historian](https://github.com/wonsukchoi/domain-experts/tree/main/roles/historian)
   handles provenance and evidence criticism. For this project, it records the
-  origin of Jorhat shapefiles, EPANET inputs, field CSVs, and derived aggregate
-  profiles, distinguishing observed design facts from assumptions and synthetic
-  values.
+  origin of private training references, EPANET inputs, field CSVs, and derived
+  aggregate profiles, distinguishing observed design facts from assumptions and
+  synthetic values.
 
 ## Project application
 
@@ -33,11 +33,12 @@ change:
 
 | Evidence class | Examples | Allowed use |
 |---|---|---|
-| Primary project artifact | Jorhat `.shp`, `.inp`, survey or approved crossing sheet | Calibrate or reproduce a measured design fact |
-| Derived reference | Jorhat length, diameter, node-degree aggregates | Inform a synthetic candidate; never silently replace field approval |
+| Primary project artifact | Private `.shp`/`.inp`, survey or approved crossing sheet | Calibrate or reproduce a measured design fact |
+| Derived reference | Redacted length, diameter, or node-degree aggregates | Inform a synthetic candidate; never silently replace field approval |
 | Field-confirmed input | Approved road corridor and crossing CSV/GeoJSON | Permit constructible alignment and boring links |
 | Assumption | Synthetic coordinates, demand, elevation, catalog entry | Run a labeled candidate only; requires engineer review |
 
 The implementation records this distinction in the design basis, exports, node
-metadata, and `road_topology_status`. Raw Jorhat project files remain local;
-public outputs contain only derived engineering aggregates.
+metadata, and `road_topology_status`. Private training files remain outside the
+first-design artifacts; generated outputs contain no training-project identity
+or source data.

@@ -4,9 +4,7 @@
 
 This repository is now the starting point for a general-purpose water supply scheme analysis toolkit.
 
-The previous Jorhat implementation has been preserved without deletion in:
-
-- `legacy/jorhat_project`
+Private training material is kept outside the first-design contract.
 
 The root project is intended to evolve into a reusable system that can support:
 
@@ -17,13 +15,9 @@ The root project is intended to evolve into a reusable system that can support:
 
 ## Repository Modes
 
-### 1. Legacy archive mode
+### 1. Private training mode
 
-The archived Jorhat scheme is preserved exactly for:
-
-- rerunning historical analysis
-- comparing future generalized outputs
-- reusing real engineering source data as a test case
+Training artifacts are not loaded or exported by the first-design workflow.
 
 ### 2. General toolkit mode
 
@@ -43,7 +37,6 @@ C:\Automation\WNTR
 ├── data\raw
 ├── data\processed
 ├── docs
-├── legacy\jorhat_project
 ├── models
 ├── results
 ├── src\water_scheme_toolkit
@@ -60,8 +53,6 @@ C:\Automation\WNTR
   Standardized or preprocessed data products.
 - `docs`
   Space for future design notes, examples, and user guides.
-- `legacy/jorhat_project`
-  Archived Jorhat implementation and data.
 - `models`
   Generated EPANET / WNTR or intermediate model files.
 - `results`
@@ -120,14 +111,9 @@ That file should define:
 - `templates/data_template.csv`
 - `configs/schemes/sample_scheme.yaml`
 
-## Legacy Preservation Note
+## Training Separation
 
-The Jorhat work was moved into a folder instead of a Git branch because this workspace is not currently a Git repository.
-
-If versioned branch-based preservation is required later, initialize Git and commit:
-
-1. the archive state
-2. the new generalized scaffold
+Training-only data is deliberately separated from generated models, reports, and maps.
 
 ## Rebuild Intent
 

@@ -9,8 +9,8 @@ def road_topology_violations(nodes: list[dict[str, Any]], pipes: list[dict[str, 
     """Return construction-topology violations for a two-sided road network.
 
     A road has at most one longitudinal run on each side. Approved road bores
-    are separate cross-road links and may add one connection at an intersection
-    node without creating a third longitudinal line in that road.
+    are separate cross-road links and may add one same-side connection at an
+    intersection node without creating a third longitudinal line in that road.
     """
     violations: list[str] = []
     node_ids = {str(node["node_id"]) for node in nodes}
@@ -79,10 +79,8 @@ def road_topology_violations(nodes: list[dict[str, Any]], pipes: list[dict[str, 
             (str(link.get("from_road_side", "")), str(link.get("to_road_side", "")))
             for link in links
         }
-        if crossing_id == "X_ESR_ENTRY":
-            continue
-        if side_pairs != {("LEFT", "RIGHT"), ("RIGHT", "LEFT")}:
-            violations.append(f"Crossing {crossing_id} must connect opposite roadside pairs")
+        if side_pairs != {("LEFT", "LEFT"), ("RIGHT", "RIGHT")}:
+            violations.append(f"Crossing {crossing_id} must connect matching roadside pairs")
 
     return violations
 

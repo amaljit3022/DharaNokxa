@@ -26,19 +26,17 @@ python main.py map --config configs\schemes\sample_scheme.yaml
 python main.py report --config configs\schemes\sample_scheme.yaml
 ```
 
-## Run Legacy Jorhat Workflow
-
-All Jorhat-specific files are preserved under:
-
-- `legacy/jorhat_project`
-
-Legacy commands should be executed from that folder using its preserved scripts and environment snapshot.
-# DharaNokxa quick start
+## DharaNokxa quick start
 
 ```powershell
 cd C:\Automation\WNTR
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
+```
+
+Run the synthetic first design:
+
+```powershell
 .\.venv\Scripts\python.exe main.py demo
 ```
 

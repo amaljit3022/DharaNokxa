@@ -4,7 +4,7 @@
 
 The repository now follows a two-track architecture:
 
-- archived scheme-specific implementation
+- private training archive
 - fresh generalized toolkit scaffold
 
 ## Architecture Diagram
@@ -24,8 +24,6 @@ flowchart TD
     I --> K[Results / CSV / Markdown]
     J --> L[Maps / PNG / PDF]
 
-    M[legacy/jorhat_project] --> N[Reference Scheme / Regression Dataset]
-    N --> C
 ```
 
 ## Visual Pipeline
@@ -44,9 +42,9 @@ Raw scheme files
 
 ## Component Roles
 
-### Legacy archive
+### Private training archive
 
-`legacy/jorhat_project` is the preserved benchmark scheme and historical implementation.
+Training-only artifacts are excluded from generated designs and public outputs.
 
 ### New generalized root
 

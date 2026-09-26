@@ -15,8 +15,6 @@ from matplotlib.backends.backend_pdf import PdfPages
 from .catalog import PipeCatalogEntry
 from .hydraulics import Simulation, build_model
 from .models import DesignRequest, DesignResult
-from .reference import load_jorhat_reference
-from .roads import load_jorhat_roads
 
 
 def create_artifacts(result: DesignResult, request: DesignRequest, simulation: Simulation, catalog: dict[str, PipeCatalogEntry]) -> dict[str, str]:
@@ -82,21 +80,18 @@ def _write_csv(path: Path, rows: list[dict]) -> None:
 
 def _design_basis(request: DesignRequest) -> dict:
     profile = request.profile
-    reference = load_jorhat_reference()
-    roads = load_jorhat_roads()
     return {
         "status": "DEMONSTRATION / SYNTHETIC DATA",
         "profile": profile.name,
         "geometry_reference": {
-            "source": "Preserved local Jorhat GIS and EPANET aggregate statistics",
-            "profile": reference.to_dict(),
-            "use": "Reference-informed synthetic topology and segment lengths; source coordinates are not copied",
+            "source": "Road corridor constraints and field-provided alignment inputs",
+            "use": "Straight roadside segments between named intersections; source training data is not exported",
         },
         "road_corridor_reference": {
-            "profile": roads.to_dict(),
             "alignment_rule": "Straight pipe segments between named road intersections",
             "crossing_rule": "Road boring only at approved crossing records",
-            "parallel_side_rule": "Left and right roadside runs are modeled separately",
+            "parallel_side_rule": "Exactly one LEFT and one RIGHT run per road",
+            "node_connection_rule": "At most two same-road run links plus one same-side approved bore per node",
         },
         "parameters": [
             {"parameter": "Domestic demand", "value": profile.domestic_lpcd, "unit": "L/person/day", "source": "Supplied project brief", "confidence": "ASSUMED"},

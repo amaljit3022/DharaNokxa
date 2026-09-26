@@ -10,8 +10,6 @@ from .exports import create_artifacts
 from .hydraulics import simulate, status_for
 from .models import DesignRequest, DesignResult
 from .optimizer import optimize
-from .reference import load_jorhat_reference
-from .roads import load_jorhat_roads
 from .topology import road_topology_violations
 
 
@@ -67,10 +65,7 @@ def design(request: DesignRequest) -> DesignResult:
         "optimization_iterations": len(iterations) - 1,
         "dda_status": pressure_status, "pdd_demand_delivery_pass": final_pdd.all_demands_delivered,
         "simulator": final_dda.simulator,
-        "geometry_reference": "JORHAT_DERIVED_TOPOLOGY_AND_LENGTHS",
-        "reference_source_node_count": load_jorhat_reference().source_node_count,
-        "reference_source_pipe_count": load_jorhat_reference().source_pipe_count,
-        "road_reference_feature_count": load_jorhat_roads().road_feature_count,
+        "geometry_reference": "ROAD_CORRIDOR_CONSTRAINTS",
         "road_alignment_rule": "STRAIGHT_SEGMENTS_BETWEEN_NAMED_INTERSECTIONS_WITH_APPROVED_ROAD_BORE_CROSSINGS",
         "road_topology_status": "PASS" if not road_violations else "FAIL",
         "road_topology_violations": road_violations,

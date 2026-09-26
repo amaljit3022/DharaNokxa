@@ -20,7 +20,7 @@ Recommended hybrid: **three required inputs, one primary action, a persistent ma
 
 Inspected README, package metadata, pipeline, validation, architecture, and root file layout. The generalized `water_scheme_toolkit` currently provides configuration, validation, and CLI scaffolding. Its build/simulate/analyze/map/report commands print placeholder messages. There is no frontend or API in the inspected root inventory.
 
-Reuse the configuration and CLI foundations. Audit legacy hydraulic routines individually before extracting reusable behavior. Preserve `legacy/jorhat_project` byte-for-byte; run regressions using working copies outside that directory.
+Reuse the configuration and CLI foundations. Audit private training routines individually before extracting reusable behavior. Keep training artifacts outside the first-design workflow and run regressions using working copies.
 
 A `.git` entry exists, but `git status` currently reports that this is not a Git repository. Inspect that entry before repository initialization; do not overwrite it blindly. Public publication is an implementation milestone, not part of preparing this plan.
 
@@ -215,7 +215,7 @@ Public repository hygiene: ignore environments, keys, databases, downloaded GIS/
 - Downsizing tests: all constraints remain satisfied, rejected trials restore exact prior catalog choices, and final model is reverified.
 - Artifact tests: exported INP reproduces results within stated tolerances; map/table/report/ZIP share run ID and status; units and synthetic labels persist; spreadsheet exports neutralize uploaded formula text.
 - UI tests: upload-to-export journey, issue-to-map navigation, critical-node change, refresh/reconnect, keyboard-only operation, responsive layouts, and reduced-motion behavior.
-- Archive regression: verify before/after hashes and compare approved hydraulic reference metrics on copied Jorhat fixtures with documented tolerances.
+- Archive regression: verify before/after hashes and compare approved hydraulic reference metrics on copied training fixtures with documented tolerances.
 
 Release acceptance is the full 30-point checklist in the supplied brief. A visually complete dashboard backed by mock hydraulic data does not satisfy it.
 
@@ -227,17 +227,18 @@ Resolve during engineering implementation: authoritative Assam/JJM references; a
 
 MapLibre supports local GeoJSON layers, suitable for household/network visualization; use a bundled style/context for offline operation. See [MapLibre examples](https://maplibre.org/maplibre-gl-js/docs/examples/). The chosen layout, worker architecture, and milestone order are design recommendations, not requirements imposed by these references.
 
-## 12. Jorhat reference-informed geometry
+## 12. Private training calibration
 
-The synthetic network generator now reads the preserved local Jorhat distribution shapefiles and consolidated EPANET model when available. The adapter extracts only aggregate engineering characteristics: connected branching topology, node-degree distribution, pipe-length distribution, turning-angle distribution, commercial diameter frequency, material labels, and model counts. It does not copy Jorhat coordinates, household records, or raw design files into a generated scheme, package, or public repository.
-
-The observed reference is materially different from the former demonstration chain: six distribution zones, approximately 2,221 GIS junctions and 2,247 GIS pipes, median GIS segment length around 48 m, EPANET median segment length around 54 m, p90 length around 184 m, and predominantly degree-three branching junctions with terminal leaves. The first demo generator uses these distributions to create a smaller deterministic rooted branching network with varied segment lengths and explicit leaf endpoints. If the archive is unavailable, the same measured aggregate snapshot is used as an offline fallback and is labeled reference-derived rather than surveyed.
-
-This is reference-informed procedural calibration, not a claim that the output is a trained construction model or a copy of Jorhat. Future learning work can add a versioned feature dataset and validation split after licensing, coordinate privacy, and engineering-label decisions are resolved.
+Training references are kept outside the first-design contract. The generator does
+not load, name, copy, or export training-project coordinates, household records,
+network counts, or source filenames. The first design uses only explicit project
+inputs, synthetic demo values, and the road-corridor constraints below. Any future
+calibration dataset must pass licensing, coordinate privacy, and engineering-label
+review before it can affect generated geometry or hydraulic parameters.
 
 ## 13. Road-corridor alignment and field handoff
 
-The distribution alignment rule is now explicit: create separate left and right roadside runs; keep each run straight between named road intersections; and create a `ROAD_BORE` link only from an approved crossing record. A road has exactly two longitudinal lines, and a roadside node may have at most two same-road run links plus one approved bore link. The topology validator also rejects long or unapproved bore links and crossings that do not contain the two opposite-side connections. Household service connections attach to a roadside node and do not create arbitrary diagonal pipes. The demo uses a synthetic corridor layout calibrated by the Jorhat `ROAD.shp` layer because the preserved source coordinates are not portable design inputs.
+The distribution alignment rule is now explicit: create separate left and right roadside runs; keep each run straight between named road intersections; and create a `ROAD_BORE` link only from an approved crossing record. A road has exactly two longitudinal lines, and a roadside node may have at most two same-road run links plus one approved bore link. The topology validator also rejects long or unapproved bore links and crossings that do not contain the two matching-side connections. Household service connections attach to a roadside node and do not create arbitrary diagonal pipes. The demo uses only synthetic corridor geometry until a field-confirmed layer is supplied.
 
 Field officials can provide tentative lines using `templates/road_corridors.template.csv` and controlled crossings using `templates/road_crossings.template.csv`. The corridor schema carries road/segment IDs, named intersections, metric coordinates, road class, source, and confidence. The crossing schema carries approval, boring method, side pair, and remarks. An approved GIS centerline or GeoJSON layer can replace the demo corridors once its CRS, road ownership, and crossing permissions are confirmed.
 

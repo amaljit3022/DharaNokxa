@@ -38,7 +38,7 @@ Open `http://localhost:3000`. See [RUN_COMMANDS.md](RUN_COMMANDS.md) for build a
 - Hydraulic diameters use HDPE internal diameter.
 - Hydraulic compliance and engineer approval are separate states.
 - Synthetic and assumed data remain visibly labeled in the interface and exports.
-- The demo network shape is calibrated from the preserved Jorhat aggregate reference profile; source coordinates and raw project files are not copied.
+- The first design uses synthetic values and field road-corridor inputs; private training references are not named or exported.
 - Pipes run as paired left/right roadside segments between named intersections. Road-bore links are explicit approved crossing records only.
 - Every road is constrained to exactly two longitudinal lines (LEFT and RIGHT). At an approved intersection, each roadside node can receive at most one bore link; the topology validator rejects extra run or crossing connections.
 
@@ -48,13 +48,13 @@ Open `http://localhost:3000`. See [RUN_COMMANDS.md](RUN_COMMANDS.md) for build a
 src/dharanokxa/    engineering core and exports
 api/               FastAPI job interface
 web/               Next.js and MapLibre engineering workspace
-standards/         labeled demonstration profiles/catalog and Jorhat-derived aggregate profile
+standards/         labeled demonstration profiles and pipe catalog
 tests/             threshold, catalog, topology, hydraulic, export and HTTP tests
 docs/              product and implementation design
-legacy/             preserved Jorhat reference scripts and local archive
+legacy/             private training archive, excluded from first-design outputs
 ```
 
-The real Jorhat WaterGEMS/GIS files and its historical virtual environment remain preserved locally but are intentionally excluded from the public repository because they are large and have not been cleared for public distribution.
+Private training files and historical environments remain outside generated design packages and are not required to build the first design.
 
 ## Verification
 

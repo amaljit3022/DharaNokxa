@@ -4,11 +4,7 @@
 
 This file describes the dependencies for the new generalized toolkit at the repository root.
 
-The archived Jorhat environment remains inside:
-
-- `legacy/jorhat_project`
-
-and includes its own dependency snapshot.
+Private training environments are kept outside the first-design dependency contract.
 
 ## Python Version
 
@@ -47,8 +43,6 @@ Recommended:
 pip install -r requirements.txt
 ```
 
-## Legacy Dependency Note
+## Training Dependency Note
 
-For the archived Jorhat project, see:
-
-- `legacy/jorhat_project/requirements_recreated.txt`
+Training-only environments are not required to build or export the first design.
