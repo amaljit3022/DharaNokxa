@@ -27,6 +27,7 @@ export default function Home() {
   const [runs, setRuns] = useState<Asset[]>([]);
   const [run, setRun] = useState<Asset|null>(null);
   const [undo, setUndo] = useState<Document[]>([]);
+  const [osmUrl, setOsmUrl] = useState<string|null>(null);
 
   useEffect(() => { request('/projects').then(setProjects).catch(e => setError(e.message)); }, []);
   useEffect(() => {
@@ -43,6 +44,14 @@ export default function Home() {
     }).catch(e => { if (active) setError(e.message); }), 1200);
     return () => { active = false; clearInterval(timer); };
   }, [project?.id, run?.id, run?.state]);
+  useEffect(() => {
+    if (!project) { setOsmUrl(null); return; }
+    let active = true;
+    fetch(`${API}/projects/${project.id}/openstreetmap`).then(response => response.ok ? response.json() : null).then(reference => {
+      if (active) setOsmUrl(reference?.url ?? null);
+    }).catch(() => { if (active) setOsmUrl(null); });
+    return () => { active = false; };
+  }, [project?.id, project?.revision]);
   useEffect(() => {
     if (!project || !doc || !dirty) return;
     try { localStorage.setItem(`dn-draft-${project.id}`, JSON.stringify({revision: project.revision, document: doc})); }
@@ -141,7 +150,7 @@ export default function Home() {
       {tab === 'Inputs' && <InputPanel project={project} doc={doc} dirty={dirty} onChange={change} task={task} onImported={p => {setProject(p); setDoc(p.document); setDirty(false); setUndo([]); setMessage('Import committed as a new revision.'); setIssues([]);}}/>}
       {tab === 'Network' && <>
         <div className="tool-row">{['Junction','Reservoir','Tank','Pipe','Pump','Valve'].map(t => <button key={t} onClick={() => {setSelected(null); setEditType(t);}}>+ {t}</button>)}<span>{doc.model.nodes.length} nodes · {doc.model.links.length} links</span></div>
-        <div className="engineering-grid"><section><NetworkView document={doc} selected={selected?.name} onSelect={inspect}/><div className="table-scroll"><table><thead><tr><th>Asset ID</th><th>Type</th><th>From</th><th>To</th><th>Action</th></tr></thead><tbody>{[...doc.model.nodes,...doc.model.links].map((a,i) => <tr key={i}><td>{a.name}</td><td>{a.node_type ?? a.link_type}</td><td>{a.start_node_name ?? '—'}</td><td>{a.end_node_name ?? '—'}</td><td><button onClick={() => inspect(a)}>Edit</button></td></tr>)}</tbody></table></div></section>
+        <div className="engineering-grid"><section><NetworkView document={doc} selected={selected?.name} onSelect={inspect} osmUrl={osmUrl} referenceStale={dirty}/><div className="table-scroll"><table><thead><tr><th>Asset ID</th><th>Type</th><th>From</th><th>To</th><th>Action</th></tr></thead><tbody>{[...doc.model.nodes,...doc.model.links].map((a,i) => <tr key={i}><td>{a.name}</td><td>{a.node_type ?? a.link_type}</td><td>{a.start_node_name ?? '—'}</td><td>{a.end_node_name ?? '—'}</td><td><button onClick={() => inspect(a)}>Edit</button></td></tr>)}</tbody></table></div></section>
         <aside>{editType ? <><AssetEditor asset={selected} type={editType} document={doc} onSave={applyAsset} onCancel={() => setEditType('')}/>{selected && <button onClick={removeSelected}>Remove selected asset from draft</button>}</> : <div className="empty-map">Select an asset or add one above.<p>One physical connection uses one node. Geometry vertices shape pipes without adding joints.</p></div>}</aside></div>
         <GeometryTools project={project} doc={doc} dirty={dirty} onChange={change} task={task}/>
       </>}

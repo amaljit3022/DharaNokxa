@@ -12,6 +12,7 @@ from dharanokxa.project_imports import inspect_upload
 from dharanokxa.project_analysis import analyze
 from dharanokxa.project_exports import safe_table
 from dharanokxa.project_scenarios import scenario_document
+from dharanokxa.project_geometry import openstreetmap_reference
 from dharanokxa.project_validation import validate_document
 
 
@@ -118,6 +119,17 @@ def test_export_tables_escape_spreadsheet_formulas():
     assert value['asset'] == "'=unsafe"
     assert value['note'] == "'+unsafe"
     assert value['number'] == 2
+
+
+def test_openstreetmap_reference_requires_declared_crs_and_uses_project_extent():
+    with pytest.raises(ValueError, match='CRS'):
+        openstreetmap_reference(network())
+    doc = network()
+    doc['crs'] = 'EPSG:4326'
+    reference = openstreetmap_reference(doc)
+    assert reference['provider'] == 'OpenStreetMap contributors'
+    assert 'openstreetmap.org' in reference['url']
+    assert reference['bounds']['east'] == 100
 
 
 def test_api_staging_and_conflicts(tmp_path, monkeypatch):

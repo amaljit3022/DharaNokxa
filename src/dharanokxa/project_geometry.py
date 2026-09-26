@@ -2,10 +2,48 @@
 from __future__ import annotations
 
 from copy import deepcopy
+from math import log2
+from urllib.parse import urlencode
 
 import geopandas as gpd
 from pyproj import CRS, Transformer
 from shapely.geometry import LineString, shape
+
+
+def openstreetmap_reference(document):
+    """Return a view-only OpenStreetMap link for declared project geometry.
+
+    A basemap is context for field review only; it cannot imply hydraulic or
+    construction connectivity.
+    """
+    if not document.get('crs'):
+        raise ValueError('Assign a project CRS before opening a geographic reference map.')
+    transformer = Transformer.from_crs(CRS.from_user_input(document['crs']), 4326, always_xy=True)
+    coordinates = []
+    for node in document['model'].get('nodes', []):
+        point = node.get('coordinates')
+        if isinstance(point, (list, tuple)) and len(point) == 2:
+            try:
+                longitude, latitude = transformer.transform(float(point[0]), float(point[1]))
+            except (TypeError, ValueError):
+                continue
+            if -180 <= longitude <= 180 and -90 <= latitude <= 90:
+                coordinates.append((longitude, latitude))
+    if not coordinates:
+        raise ValueError('No located network assets are available for a geographic reference map.')
+    west, east = min(p[0] for p in coordinates), max(p[0] for p in coordinates)
+    south, north = min(p[1] for p in coordinates), max(p[1] for p in coordinates)
+    longitude, latitude = (west + east) / 2, (south + north) / 2
+    span = max(east - west, north - south, .0002)
+    zoom = max(10, min(18, round(15 - log2(span / .01))))
+    return {
+        'provider': 'OpenStreetMap contributors',
+        'attribution_url': 'https://www.openstreetmap.org/copyright',
+        'center': {'longitude': longitude, 'latitude': latitude, 'zoom': zoom},
+        'bounds': {'west': west, 'south': south, 'east': east, 'north': north},
+        'url': 'https://www.openstreetmap.org/?' + urlencode({'mlat': f'{latitude:.7f}', 'mlon': f'{longitude:.7f}'})
+               + f'#map={zoom}/{latitude:.7f}/{longitude:.7f}',
+    }
 
 
 def roadside_candidate(document, layer_index, sides, offset_m, diameter_mm, roughness):

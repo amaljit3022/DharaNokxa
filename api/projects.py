@@ -15,7 +15,7 @@ from dharanokxa.projects import ProjectStore, encode
 from dharanokxa.project_imports import MAX_UPLOAD, TEMPLATES, inspect_upload
 from dharanokxa.project_validation import validate_document
 from dharanokxa.project_analysis import analyze
-from dharanokxa.project_geometry import roadside_candidate, join_junctions, allocate_households
+from dharanokxa.project_geometry import roadside_candidate, join_junctions, allocate_households, openstreetmap_reference
 from dharanokxa.project_optimization import optimize_project
 
 router = APIRouter(prefix='/projects', tags=['Engineering projects'])
@@ -123,6 +123,14 @@ def template(role: str):
 @router.get('/{pid}')
 def project(pid: str, revision: int | None = None):
     return get_project(pid, revision)
+
+
+@router.get('/{pid}/openstreetmap')
+def openstreetmap(pid: str):
+    try:
+        return openstreetmap_reference(get_project(pid)['document'])
+    except (ValueError, TypeError) as exc:
+        raise HTTPException(422, str(exc)) from exc
 
 
 @router.put('/{pid}')
